@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kereszteződés Diagram</title>
+    <style>
+        :root {
+            --road-width: 100px;
+            --arm-length: 100px;
+            --border-thick: 2.5px solid black;
+            --arrow-color: #8da6d6; /* A nyilak kék színe */
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #f9f9f9;
+        }
+
+        /* Fő rács (3x3 grid) */
+        .container {
+            display: grid;
+            grid-template-columns: var(--arm-length) var(--road-width) var(--arm-length);
+            grid-template-rows: var(--arm-length) var(--road-width) var(--arm-length);
+            background-color: white;
+            padding: 10px;
+        }
+
+        /* Cellák általános formázása */
+        .cell {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+
+        /* ---------------- UTAK (KERETEK) ---------------- */
+
+        /* "A" (Felső) kar */
+        .cell.top {
+            border-left: var(--border-thick);
+            border-right: var(--border-thick);
+            grid-column: 2;
+            grid-row: 1; 
+            background: lightgrey;
+
+        }
+
+        /* "B" (Jobb) kar */
+        .cell.right {
+            border-top: var(--border-thick);
+            border-bottom: var(--border-thick);
+            grid-column: 3;
+            grid-row: 2; 
+            background: lightgrey;
+        }
+
+        /* "C" (Alsó) kar */
+        .cell.bottom {
+            border-left: var(--border-thick);
+            border-right: var(--border-thick);
+            grid-column: 2;
+            grid-row: 3; 
+            background: lightgrey;
+        }
+
+        /* "D" (Bal) kar */
+        .cell.left {
+            border-top: var(--border-thick);
+            border-bottom: var(--border-thick);
+            grid-column: 1;
+            grid-row: 2; 
+            background: lightgrey;
+        }
+
+        /* Közép (Nyilak) */
+        .cell.center {
+            grid-column: 2;
+            grid-row: 2;
+            position: relative; 
+            background: lightgrey;
+            border: none;
+        }
+
+        /* ---------------- INPUT MEZŐK ---------------- */
+        
+        .data-group {
+            text-align: center;
+            margin: 2.5px 0;
+            z-index: 2;
+        }
+
+        input[type="vehicle.number"] {
+            font-size: 11px;
+            font-weight: bold;
+            text-align: center;
+            padding: 2.5px;
+            width: 40px;
+            border: 0.5px solid #777;
+        }
+
+        input[type="number"] {
+            font-size: 9px;
+            font-weight: normal;
+            text-align: center;
+            padding: 2.5px;
+            width: 40px;
+            border: 0.5px solid #777;
+        }
+
+        input[type="time.number"] {
+            font-size: 7px;
+            font-weight: normal;
+            text-align: center;
+            padding: 2.5px;
+            width: 40px;
+            border: 0.5px solid #777;
+        }
+
+        .label {
+            font-size: 6px;
+            margin-top: 1px;
+            color: #000;
+        }
+
+        /* ---------------- ELSŐBBSÉGI SZÁMOK (1, 2, 3, 4) - INPUTKÉNT ---------------- */
+        
+        /* Specifikus input formázás, hogy szövegnek nézzen ki */
+        input.priority-number {
+            font-family: Arial, sans-serif; /* Örökölje a fontot */
+            font-size: 18px;
+            font-weight: bold;
+            position: absolute;
+            
+            /* Input stílusok eltüntetése */
+            border: none;
+            background: transparent;
+            padding: 0;
+            margin: 0;
+            width: 1.5em; /* Elég széles legyen 1-2 számjegynek */
+            text-align: center;
+            color: black;
+            outline: none; /* Fókusz keret eltüntetése */
+            cursor: text; /* Jelezze, hogy írható */
+        }
+
+        /* Spinner (fel/le nyilak) eltüntetése Chrome, Safari, Edge, Opera alatt */
+        input.priority-number::-webkit-outer-spin-button,
+        input.priority-number::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        /* Spinner eltüntetése Firefox alatt */
+        input.priority-number {
+            -moz-appearance: textfield;
+        }
+
+        .pos-A { top: -00px; } 
+        .pos-B { right: -00px; } 
+        .pos-C { bottom: -00px; } 
+        .pos-D { left: -00px; } 
+
+
+        /* ---------------- CHECKBOXOK ---------------- */
+        
+        .check-wrapper {
+            position: absolute;
+        }
+
+        /* Az "A-C" tengely checkboxa (jobb felső sarok a karon belül, de a vonalon kívülre esik a képen) */
+        .check-AC {
+            top: 5px;
+            right: -20px; 
+        }
+
+        /* A "B-D" tengely checkboxa (bal felső sarok környéke) */
+        .check-BD {
+            top: -20px;
+            left: 5px;
+        }
+
+        input[type="checkbox"] {
+            transform: scale(0.75); /* Kisebb checkbox */
+            cursor: pointer;
+        }
+
+        /* ---------------- KIS KORONGOK (TÁBLÁK) ---------------- */
+        .sign {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: white;
+            border: 2px solid #333;
+            box-shadow: 0 0 2px rgba(0,0,0,0.4);
+            z-index: 3;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 8px;
+            font-weight: bold;
+            color: #000;
+        }
+
+        /* Jobbra tarts elhelyezés, irányonként a vezető jobb oldalán, a csomópont előtt */
+        .sign-A { bottom: 8px; left: 8px; }     /* A (felső kar): jobbra = nyugat */
+        .sign-B { top: 8px; left: 8px; }        /* B (jobb kar): jobbra = észak */
+        .sign-C { top: 8px; right: 8px; }       /* C (alsó kar): jobbra = kelet */
+        .sign-D { bottom: 8px; right: 8px; }    /* D (bal kar): jobbra = dél */
+
+        /* ---------------- INAKTÍV (order 0) ÁG STÍLUS ---------------- */
+        .cell.inactive {
+            background: white !important;
+            border: none !important;
+        }
+
+        .cell.center.border-A { border-top: var(--border-thick); }
+        .cell.center.border-B { border-right: var(--border-thick); }
+        .cell.center.border-C { border-bottom: var(--border-thick); }
+        .cell.center.border-D { border-left: var(--border-thick); }
+
+        /* ---------------- NYILAK (SVG) ---------------- */
+        svg {
+            width: 100%;
+            height: 100%;
+            overflow: visible; /* Hogy a nyilak "kilógjanak" kicsit a szomszédos cellákba ha kell */
+        }
+
+        .arrow-path {
+            fill: var(--arrow-color);
+            stroke: #6c8ecf;
+            stroke-width: 0.5;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        
+        <div class="cell top">
+            <input type="number" class="priority-number pos-A" value="1">
+            
+            <div class="check-wrapper check-AC">
+                <input id="toggle-vertical" type="checkbox" title="AC tengely" checked>
+            </div>
+
+            <div class="sign sign-A"></div>
+
+            <div class="data-group">
+                <input type="vehicle.number" value="0">
+                <div class="label">Jármű/h</div>
+            </div>
+            <div class="data-group">
+                <input type="time.number" value="4,2">
+                <div class="label">s/áthajtás</div>
+            </div>
+        </div>
+
+        <div class="cell left">
+            <input type="number" class="priority-number pos-D" value="0">
+
+            <div class="check-wrapper check-BD">
+                <input id="toggle-horizontal" type="checkbox" title="BD tengely" checked>
+            </div>
+
+            <div class="sign sign-D"></div>
+
+            <div class="data-group">
+                <input type="vehicle.number" value="0">
+                <div class="label">Jármű/h</div>
+            </div>
+            <div class="data-group">
+                <input type="time.number" value="4,2">
+                <div class="label">s/áthajtás</div>
+            </div>
+        </div>
+
+        <div class="cell center">
+            <svg viewBox="0 0 200 200">
+                <defs>
+                    <marker id="arrowhead" markerWidth="10" markerHeight="7" 
+                    refX="0" refY="3.5" orient="auto">
+                      <polygon points="0 0, 10 3.5, 0 7" fill="#8da6d6" />
+                    </marker>
+                </defs>
+
+                <polygon points="180,65 60,65 60,45 20,75 60,105 60,85 180,85" class="arrow-path arrow-horizontal" opacity="0.9"/>  <polygon points="20,135 140,135 140,155 180,125 140,95 140,115 20,115" class="arrow-path arrow-horizontal" opacity="0.9"/>  <polygon points="65,20 65,140 45,140 75,180 105,140 85,140 85,20" class="arrow-path arrow-vertical" opacity="0.9"/>  <polygon points="135,180 135,60 155,60 125,20 95,60 115,60 115,180" class="arrow-path arrow-vertical" opacity="0.9"/>  </svg>
+        </div>
+
+        <div class="cell right">
+            <input type="number" class="priority-number pos-B" value="2">
+
+            <div class="sign sign-B"></div>
+
+            <div class="data-group">
+                <input type="vehicle.number" value="200">
+                <div class="label">Jármű/h</div>
+            </div>
+            <div class="data-group">
+                <input type="time.number" value="4,2">
+                <div class="label">s/áthajtás</div>
+            </div>
+        </div>
+
+        <div class="cell bottom">
+            <input type="number" class="priority-number pos-C" value="3">
+
+            <div class="sign sign-C"></div>
+
+            <div class="data-group">
+                <input type="vehicle.number" value="200">
+                <div class="label">Jármű/h</div>
+            </div>
+            <div class="data-group">
+                <input type="time.number" value="4,2">
+                <div class="label">s/áthajtás</div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // Toggle arrow visibility based on the two tengely (axis) checkbox states.
+        const toggleHorizontal = document.getElementById('toggle-horizontal');
+        const toggleVertical = document.getElementById('toggle-vertical');
+        const horizontalArrows = document.querySelectorAll('.arrow-horizontal');
+        const verticalArrows = document.querySelectorAll('.arrow-vertical');
+
+        function refreshArrows(orderState = latestOrder) {
+            const acAxis = toggleVertical.checked && (orderState?.A ?? 0) !== 0 && (orderState?.C ?? 0) !== 0;
+            const bdAxis = toggleHorizontal.checked && (orderState?.B ?? 0) !== 0 && (orderState?.D ?? 0) !== 0;
+
+            horizontalArrows.forEach(el => {
+                el.style.display = bdAxis ? 'inline' : 'none';
+            });
+            verticalArrows.forEach(el => {
+                el.style.display = acAxis ? 'inline' : 'none';
+            });
+        }
+
+        // -------- PRIORITY -> ORDER NUMBER (1-4) ----------
+        const priorityInputs = {
+            A: document.querySelector('.priority-number.pos-A'),
+            B: document.querySelector('.priority-number.pos-B'),
+            C: document.querySelector('.priority-number.pos-C'),
+            D: document.querySelector('.priority-number.pos-D'),
+        };
+
+        const vehInputs = {
+            A: document.querySelector('.cell.top input[type="vehicle.number"]'),
+            B: document.querySelector('.cell.right input[type="vehicle.number"]'),
+            C: document.querySelector('.cell.bottom input[type="vehicle.number"]'),
+            D: document.querySelector('.cell.left input[type="vehicle.number"]'),
+        };
+
+        const passInputs = {
+            A: document.querySelector('.cell.top input[type="time.number"]'),
+            B: document.querySelector('.cell.right input[type="time.number"]'),
+            C: document.querySelector('.cell.bottom input[type="time.number"]'),
+            D: document.querySelector('.cell.left input[type="time.number"]'),
+        };
+
+        const signElements = {
+            A: document.querySelector('.sign-A'),
+            B: document.querySelector('.sign-B'),
+            C: document.querySelector('.sign-C'),
+            D: document.querySelector('.sign-D'),
+        };
+
+        const armCells = {
+            A: document.querySelector('.cell.top'),
+            B: document.querySelector('.cell.right'),
+            C: document.querySelector('.cell.bottom'),
+            D: document.querySelector('.cell.left'),
+        };
+        const centerCell = document.querySelector('.cell.center');
+
+        const rightOf = { A: 'B', B: 'C', C: 'D', D: 'A' };
+        const opposite = { A: 'C', B: 'D', C: 'A', D: 'B' };
+
+        // Színek (könnyen cserélhető, egymás alatt)
+        const COLOR_GREEN  = '#2ecc71';
+        const COLOR_YELLOW = '#f1c40f';
+        const COLOR_ORANGE = '#e67e22';
+        const COLOR_RED    = '#e74c3c';
+        const COLOR_GRAY   = '#b3b3b3'; // order=0 esetén
+
+        function parsePriority(value) {
+            // magyar tizedesvessző támogatása
+            const v = parseFloat(String(value).replace(',', '.'));
+            return Number.isNaN(v) ? Infinity : v;
+        }
+
+        function parseNumber(value) {
+            const v = parseFloat(String(value).replace(',', '.'));
+            return Number.isNaN(v) ? null : v;
+        }
+
+        let latestOrder = {};
+
+        function computeOrders() {
+            const valueToArms = new Map();
+            const order = {};
+            ['A', 'B', 'C', 'D'].forEach(arm => {
+                const val = parsePriority(priorityInputs[arm]?.value);
+                if (!Number.isFinite(val) || val <= 0) {
+                    order[arm] = 0; // hibás vagy 0 priority -> order 0
+                    return;
+                }
+                if (!valueToArms.has(val)) valueToArms.set(val, []);
+                valueToArms.get(val).push(arm);
+            });
+
+            const uniqueValues = Array.from(valueToArms.keys()).sort((a, b) => a - b);
+            let rank = 1;
+
+            uniqueValues.forEach(val => {
+                const arms = valueToArms.get(val);
+                if (!arms) return;
+
+                if (arms.length >= 3) {
+                    // 3 vagy 4 azonos priority -> azonos order szám
+                    arms.forEach(a => { order[a] = rank; });
+                    rank += 1;
+                } else if (arms.length === 2) {
+                    const [a, b] = arms;
+                    if (opposite[a] === b) {
+                        // szemközti azonos priority -> azonos order
+                        order[a] = order[b] = rank;
+                        rank += 1;
+                    } else {
+                        // szomszédos azonos priority -> jobbra lévő kapja a nagyobb számot (fordított sorrend)
+                        if (rightOf[a] === b) {
+                            order[a] = rank;
+                            order[b] = rank + 1;
+                        } else {
+                            order[b] = rank;
+                            order[a] = rank + 1;
+                        }
+                        rank += 2;
+                    }
+                } else if (arms.length === 1) {
+                    order[arms[0]] = rank;
+                    rank += 1;
+                }
+            });
+
+            latestOrder = order;
+            applyOrderColors(order);
+            refreshArrows(order);
+        }
+
+        function applyOrderColors(order) {
+            const orders = Object.values(order ?? {});
+            const distinct = Array.from(new Set(orders.filter(v => v !== undefined && v !== 0))).sort((a, b) => a - b);
+
+            let palette = [];
+            if (distinct.length >= 4) {
+                palette = [COLOR_GREEN, COLOR_YELLOW, COLOR_ORANGE, COLOR_RED];
+            } else if (distinct.length === 3) {
+                palette = [COLOR_GREEN, COLOR_YELLOW, COLOR_RED];
+            } else if (distinct.length === 2) {
+                palette = [COLOR_GREEN, COLOR_RED];
+            } else if (distinct.length === 1) {
+                palette = [COLOR_GREEN];
+            }
+
+            const orderToColor = new Map();
+            distinct.forEach((ord, idx) => {
+                orderToColor.set(ord, palette[idx] ?? COLOR_GREEN);
+            });
+            orderToColor.set(0, COLOR_GRAY);
+
+            const centerBorders = ['border-A','border-B','border-C','border-D'];
+            if (centerCell) centerBorders.forEach(cls => centerCell.classList.remove(cls));
+
+            ['A', 'B', 'C', 'D'].forEach(arm => {
+                const sign = signElements[arm];
+                const cell = armCells[arm];
+                if (!sign) return;
+                const ord = order[arm];
+                if (ord === 0) {
+                    sign.style.display = 'none';
+                    sign.textContent = '';
+                    sign.style.backgroundColor = COLOR_GRAY;
+                  } else {
+                      sign.style.display = 'flex';
+                      sign.textContent = arm;
+                      const color = orderToColor.get(ord) ?? '#ffffff';
+                      sign.style.backgroundColor = color;
+                  }
+
+                if (cell) {
+                    if (ord === 0) {
+                        cell.classList.add('inactive');
+                    } else {
+                        cell.classList.remove('inactive');
+                    }
+                }
+
+                if (centerCell && ord === 0) {
+                    centerCell.classList.add(`border-${arm}`);
+                }
+            });
+        }
+
+        toggleHorizontal.addEventListener('change', () => refreshArrows(latestOrder));
+        toggleVertical.addEventListener('change', () => refreshArrows(latestOrder));
+
+        Object.values(priorityInputs).forEach(inp => {
+            if (!inp) return;
+            inp.addEventListener('input', computeOrders);
+            inp.addEventListener('change', computeOrders);
+        });
+
+        refreshArrows(latestOrder);
+        computeOrders();
+
+        // Adatkiolvasás a szülő számára
+        window.getCrossData = function getCrossData() {
+            // frissítjük az order-öket
+            computeOrders();
+            const priorities = {
+                A: parseNumber(priorityInputs.A?.value),
+                B: parseNumber(priorityInputs.B?.value),
+                C: parseNumber(priorityInputs.C?.value),
+                D: parseNumber(priorityInputs.D?.value),
+            };
+            const vehicles = {
+                A: parseNumber(vehInputs.A?.value),
+                B: parseNumber(vehInputs.B?.value),
+                C: parseNumber(vehInputs.C?.value),
+                D: parseNumber(vehInputs.D?.value),
+            };
+            const passTimes = {
+                A: parseNumber(passInputs.A?.value),
+                B: parseNumber(passInputs.B?.value),
+                C: parseNumber(passInputs.C?.value),
+                D: parseNumber(passInputs.D?.value),
+            };
+
+            const axes = {
+                AC_checked: !!toggleVertical.checked,
+                BD_checked: !!toggleHorizontal.checked,
+                AC_active: !!(toggleVertical.checked && (latestOrder.A ?? 0) !== 0 && (latestOrder.C ?? 0) !== 0),
+                BD_active: !!(toggleHorizontal.checked && (latestOrder.B ?? 0) !== 0 && (latestOrder.D ?? 0) !== 0),
+            };
+
+            return {
+                priorities,
+                orders: { ...latestOrder },
+                vehicles,
+                passTimes,
+                axes,
+            };
+        };
+
+        // postMessage válasz a szülő kérésére (cross-origin safe)
+        window.addEventListener('message', (event) => {
+            const data = event.data;
+            if (!data || data.type !== 'request-cross-data') return;
+            const payload = window.getCrossData();
+            if (event.source && typeof event.source.postMessage === 'function') {
+                event.source.postMessage({ type: 'cross-data', payload }, '*');
+            }
+        });
+    </script>
+
+</body>
+</html>
+
+
+

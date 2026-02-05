@@ -1,0 +1,1621 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KOEM Junction</title>
+    <style>
+        :root {
+            --bg: #48494c;
+            --panel: #ffffff;
+            --line: #98a9c1;
+            --text: #103151;
+            --muted: #5f6b7a;
+            --blue: #3a7bd5;
+            --blue-dark: #0c2d57;
+            --shadow: 0 4px 10px rgba(31, 41, 51, 0.06);
+            --radius: 8px;
+            --sidebar-width: 340px; /* még keskenyebb */
+            /* CHART-ASPECT-VAR: diagramok aránya (szélesség / magasság) */
+            --chart-aspect-value: 3; /* width / height */
+            /* TABLE-ASPECT-VAR: táblázatok aránya (szélesség / magasság) */
+            --table-aspect-value: 1.43; /* width / height */
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            font-family: "Segoe UI", Arial, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+        }
+
+        .page {
+            display: grid;
+            grid-template-columns: var(--sidebar-width) 1fr;
+            gap: 12px;
+            min-height: 100vh;
+            padding: 12px;
+        }
+
+        .panel {
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 8px 10px;
+        }
+
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .logo-block {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo-block img {
+            width: 100px;
+            height: 100px;
+            object-fit: contain;
+            border: none;
+            background: none;
+            padding: 0;
+        }
+
+        .title {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--blue-dark);
+            margin: 0;
+        }
+
+        .subtitle {
+            margin: 2px 0 0;
+            color: var(--muted);
+            font-size: 12px;
+        }
+
+        .frame-holder {
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
+            overflow: hidden;
+            background: #fff;
+            padding: 0;
+            box-shadow: inset 0 1px 2px rgba(0,0,0,0.02);
+        }
+
+        .cross-frame {
+            width: 100%;
+            height: 320px; /* a jelenlegi szélességhez igazított négyzet */
+            border: none;
+            display: block;
+        }
+
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            font-size: 13px;
+        }
+
+        .control-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .control-row.primary {
+            margin-bottom: 2px;
+        }
+
+        .controls label {
+            min-width: 138px;
+            color: var(--muted);
+            font-weight: 600;
+        }
+
+        .controls input {
+            width: 78px;
+            padding: 5px 6px;
+            border: 1px solid var(--line);
+            border-radius: 5px;
+            font-size: 12px;
+        }
+
+        .unit {
+            color: var(--muted);
+            font-size: 11px;
+        }
+
+        .thin-sep {
+            width: 100%;
+            border: 0;
+            border-top: 1px solid var(--line);
+            margin: 2px 0 4px;
+        }
+
+        .run-btn {
+            margin-top: 8px;
+            width: 100%;
+            padding: 10px;
+            border: none;
+            border-radius: 6px;
+            background: var(--blue);
+            color: #fff;
+            font-weight: 700;
+            font-size: 14px;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(58, 123, 213, 0.16);
+            transition: background 0.15s ease, transform 0.1s ease;
+        }
+
+        .run-btn:hover { background: var(--blue-dark); }
+        .run-btn:active { transform: translateY(1px); }
+
+        .tables {
+            margin-top: 10px;
+            display: grid;
+            gap: 8px;
+        }
+
+        .table-placeholder {
+            border: 1px dashed var(--line);
+            border-radius: 7px;
+            padding: 10px;
+            min-height: 96px;
+            color: var(--muted);
+            font-size: 12px;
+            background: #f9fafb;
+        }
+
+        /* Bal oldali (diagram) hasáb */
+        .charts {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-auto-rows: auto;
+            gap: 8px;
+            width: 100%;
+            align-content: start;
+            align-items: start;
+        }
+
+        .chart-placeholder {
+            border: none;
+            border-radius: 4px;
+            background: transparent;
+            display: block;
+            padding: 0;
+            margin: 0;
+            color: var(--muted);
+            width: 100%;
+            overflow: hidden;
+        }
+        .chart-placeholder.small {
+            height: 120px;
+        }
+
+        .chart-wide {
+            grid-column: 1 / -1;
+            width: 100%;
+        }
+        .charts-stack {
+            display: grid;
+            grid-template-columns: 2fr 2fr 1fr; /* 40-40-20 */
+            gap: 8px;
+            align-items: stretch;
+        }
+
+        /* Sötét panel a renderChart alapú diagramokhoz */
+        .chart-card {
+            background: #111a25;
+            border: 1px solid #2c3a4c;
+            color: #cfd8e3;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+            border-radius: 10px;
+            padding: 12px;
+            width: 100%;
+            box-sizing: border-box;
+            display: block;
+        }
+        .chart-card .chart-title {
+            margin: 0;
+            font-size: 16px;
+            font-family: "IBM Plex Mono", Consolas, monospace;
+            font-weight: 700;
+            color: #5dade2;
+            letter-spacing: 0.02em;
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 6px;
+            background: none;
+        }
+        .chart-card .chart-body {
+            position: relative;
+            border: 1px solid #2c3a4c;
+            border-radius: 8px;
+            padding: 0;
+            background: #0f1620;
+            overflow: hidden;
+            width: 100%;
+            height: auto;
+            aspect-ratio: var(--chart-aspect-value);
+        }
+        .chart-card .table-body {
+            padding: 8px;
+            overflow: hidden;
+            display: flex;
+            align-items: stretch;
+            flex-direction: column;
+            aspect-ratio: var(--table-aspect-value);
+        }
+        .chart-card .table-body .result-table {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+        }
+        /* Éles vonalak az SVG-khez (grid, polyline) */
+        .chart-card svg line,
+        .chart-card svg polyline {
+            shape-rendering: crispEdges;
+            vector-effect: non-scaling-stroke;
+            stroke-linecap: butt;
+        }
+        /* éles vonalak az SVG-khez (grid, polyline) */
+        .chart-placeholder svg line,
+        .chart-placeholder svg polyline {
+            shape-rendering: crispEdges;
+            vector-effect: non-scaling-stroke;
+            stroke-linecap: butt;
+        }
+
+
+        .result-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+
+        .result-table th,
+        .result-table td {
+            border: 1px solid var(--line);
+            padding: 6px 8px;
+            text-align: left;
+        }
+
+        .result-table th {
+            background: #1a3968;
+            color: var(--muted);
+            font-weight: 600;
+        }
+        .result-table .summary-row {
+            background: #eef2f7;
+            font-weight: 700;
+            color: #2f65ad;
+        }
+
+        @media (max-width: 960px) {
+            .page {
+                grid-template-columns: 1fr;
+            }
+            .charts-stack {
+                grid-template-columns: 1fr;
+            }
+            :root { --sidebar-width: 100%; }
+        }
+    </style>
+</head>
+<body>
+    <div class="page">
+        <!-- Bal oldali, fixebb oszlop: bevitel + vezérlés -->
+        <div class="sidebar">
+            <div class="panel">
+                <div class="logo-block">
+                    <img src="koemlogo.jpg" alt="KOEM logó">
+                    <div>
+                        <p class="title">KOEM Junction v1.0</p>
+                        <p class="subtitle">Garázstéri csomópont</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel frame-holder">
+                <iframe class="cross-frame" src="KOEM_cross.html" title="KOEM kereszteződés bevitel"></iframe>
+            </div>
+
+            <div class="panel">
+                <div class="controls">
+                    <div class="control-row primary">
+                        <label for="follow-time">Követési idők:</label>
+                        <input id="follow-time" type="number" min="0" step="0.1" placeholder="" value="2">
+                        <span class="unit">sec</span>
+                    </div>
+                    <hr class="thin-sep">
+                    <div class="control-row">
+                        <label for="resolution">Másodperc felbontás:</label>
+                        <input id="resolution" type="number" min="0" step="0.1" value="1">
+                    </div>
+                    <div class="control-row">
+                        <label for="cycles">Ciklusok száma:</label>
+                        <input id="cycles" type="number" min="0" step="1" value="1000">
+                    </div>
+                </div>
+                <button class="run-btn">Szimuláció futtatása</button>
+            </div>
+
+        </div>
+
+        <!-- Jobb oldali, rugalmas oszlop: diagramok -->
+        <div class="charts">
+            <div class="chart-placeholder small"></div>
+            <div class="chart-placeholder small"></div>
+            <div class="chart-placeholder small"></div>
+            <div class="chart-placeholder chart-wide charts-stack">
+                <div class="chart-card">
+                    <h3 class="chart-title" id="chart6title">Találkozások [jmű(t)]</h3>
+                    <div class="chart-body">
+                        <svg id="chart6svg" viewBox="0 0 1000 667" preserveAspectRatio="xMinYMin meet" style="width:100%; height:100%;">
+                            <g data-role="axis"></g>
+                            <g data-role="ticks-x"></g>
+                            <g data-role="ticks-y"></g>
+                            <g data-role="series"></g>
+                            <g data-role="legend"></g>
+                        </svg>
+                    </div>
+                </div>
+                <div class="chart-card">
+                    <h3 class="chart-title" id="chart7title">Találkozások eloszlás [jmű(t%)]</h3>
+                    <div class="chart-body">
+                        <svg id="chart7svg" viewBox="0 0 1000 667" preserveAspectRatio="xMinYMin meet" style="width:100%; height:100%;">
+                            <g data-role="axis"></g>
+                            <g data-role="ticks-x"></g>
+                            <g data-role="ticks-y"></g>
+                            <g data-role="series"></g>
+                            <g data-role="legend"></g>
+                        </svg>
+                    </div>
+                </div>
+                <div class="chart-card">
+                    <h3 class="chart-title">Találkozás [jmű/h]</h3>
+                    <div class="chart-body table-body" id="meet-table-card">
+                        <div class="table-placeholder">Találkozások táblázat helye</div>
+                    </div>
+                </div>
+            </div>
+            <div class="chart-placeholder chart-wide charts-stack">
+                <div class="chart-card">
+                    <h3 class="chart-title" id="chart8title">Sorrafutások [jmű(t)]</h3>
+                    <div class="chart-body">
+                        <svg id="chart8svg" viewBox="0 0 1000 667" preserveAspectRatio="xMinYMin meet" style="width:100%; height:100%;">
+                            <g data-role="axis"></g>
+                            <g data-role="ticks-x"></g>
+                            <g data-role="ticks-y"></g>
+                            <g data-role="series"></g>
+                            <g data-role="legend"></g>
+                        </svg>
+                    </div>
+                </div>
+                <div class="chart-card">
+                    <h3 class="chart-title" id="chart9title">Sorrafutások eloszlás [jmű(t%)]</h3>
+                    <div class="chart-body">
+                        <svg id="chart9svg" viewBox="0 0 1000 667" preserveAspectRatio="xMinYMin meet" style="width:100%; height:100%;">
+                            <g data-role="axis"></g>
+                            <g data-role="ticks-x"></g>
+                            <g data-role="ticks-y"></g>
+                            <g data-role="series"></g>
+                            <g data-role="legend"></g>
+                        </svg>
+                    </div>
+                </div>
+                <div class="chart-card">
+                    <h3 class="chart-title">Sorrafutás [jmű/h]</h3>
+                    <div class="chart-body table-body" id="queuehit-table-card">
+                        <div class="table-placeholder">Sorrafutások táblázat helye</div>
+                    </div>
+                </div>
+            </div>
+            <div class="chart-placeholder chart-wide charts-stack">
+                <div class="chart-card">
+                    <h3 class="chart-title" id="chart4title"></h3>
+                    <div class="chart-body">
+                        <svg id="chart4svg" viewBox="0 0 1000 667" preserveAspectRatio="xMinYMin meet" style="width:100%; height:100%;">
+                            <g data-role="axis"></g>
+                            <g data-role="ticks-x"></g>
+                            <g data-role="ticks-y"></g>
+                            <g data-role="series"></g>
+                            <g data-role="legend"></g>
+                        </svg>
+                    </div>
+                </div>
+                <div class="chart-card">
+                    <h3 class="chart-title" id="chart5title"></h3>
+                    <div class="chart-body">
+                        <svg id="chart5svg" viewBox="0 0 1000 667" preserveAspectRatio="xMinYMin meet" style="width:100%; height:100%;">
+                            <g data-role="axis"></g>
+                            <g data-role="ticks-x"></g>
+                            <g data-role="ticks-y"></g>
+                            <g data-role="series"></g>
+                            <g data-role="legend"></g>
+                        </svg>
+                    </div>
+                </div>
+                <div class="chart-card">
+                    <h3 class="chart-title">Sorhossz [jmű]</h3>
+                    <div class="chart-body table-body" id="queue-table-card">
+                        <div class="table-placeholder">Torlódás táblázat helye</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            const CHART_TITLE_QUEUE = 'Sorképződés [jmű(t)]';
+            const CHART_TITLE_DIST = 'Soreloszlás [jmű(t%)]';
+            const iframe = document.querySelector('.cross-frame');
+            const CHART_TITLE_HIT = 'Sorrafutások [jmű(t)]';
+            const CHART_TITLE_HIT_DIST = 'Sorrafutások eloszlás [jmű(t%)]';
+            const runBtn = document.querySelector('.run-btn');
+            const resolutionInput = document.getElementById('resolution');
+            const followInput = document.getElementById('follow-time');
+            const chartBoxes = document.querySelectorAll('.chart-placeholder');
+            const chartBox1 = chartBoxes[0];
+            const chartBox2 = chartBoxes[1];
+            const chartBox3 = chartBoxes[2];
+            const chartBox4 = chartBoxes[3];
+            const queueTableCard = document.getElementById('queue-table-card');
+            const meetTableCard = document.getElementById('meet-table-card');
+            const queueHitTableCard = document.getElementById('queuehit-table-card');
+            const cyclesInput = document.getElementById('cycles');
+            const titleEl4 = document.getElementById('chart4title');
+            const titleEl5 = document.getElementById('chart5title');
+            const titleEl8 = document.getElementById('chart8title');
+            const titleEl9 = document.getElementById('chart9title');
+
+            const formatNum = (v) => v === null || v === undefined ? '' : String(v).replace('.', ',');
+            let crossReady = false;
+            let lastData = null;
+
+            const parseNum = (v) => {
+                const n = parseFloat(String(v).replace(',', '.'));
+                return Number.isNaN(n) ? null : n;
+            };
+
+            function getResolution() {
+                const val = parseNum(resolutionInput?.value);
+                if (val === null || val <= 0) return 1;
+                return val;
+            }
+
+            function getCycles() {
+                const val = parseNum(cyclesInput?.value);
+                if (val === null || val <= 0) return 1;
+                return Math.max(1, Math.round(val));
+            }
+
+            function getFollowK() {
+                const val = parseNum(followInput?.value);
+                return val && val > 0 ? val : 0;
+            }
+
+            const COLOR_GREEN  = '#2ecc71';
+            const COLOR_YELLOW = '#f1c40f';
+            const COLOR_ORANGE = '#e67e22';
+            const COLOR_RED    = '#e74c3c';
+            const COLOR_GRAY   = '#b3b3b3';
+
+            function orderToColor(order, palette) {
+                if (!order || order === 0) return COLOR_GRAY;
+                if (palette && palette[order]) return palette[order];
+                // fallback by order rank
+                const map = [null, COLOR_GREEN, COLOR_YELLOW, COLOR_ORANGE, COLOR_RED];
+                return map[order] || COLOR_GRAY;
+            }
+
+            function buildPalette(distinctOrders) {
+                const arr = Array.from(new Set((distinctOrders || []).filter(v => v > 0))).sort((a,b)=>a-b);
+                if (arr.length >= 4) return {1:COLOR_GREEN,2:COLOR_YELLOW,3:COLOR_ORANGE,4:COLOR_RED};
+                if (arr.length === 3) return {1:COLOR_GREEN,2:COLOR_YELLOW,3:COLOR_RED};
+                if (arr.length === 2) return {1:COLOR_GREEN,2:COLOR_RED};
+                if (arr.length === 1) return {1:COLOR_GREEN};
+                return {};
+            }
+
+            if (titleEl4) titleEl4.textContent = CHART_TITLE_QUEUE;
+            if (titleEl5) titleEl5.textContent = CHART_TITLE_DIST;
+            if (titleEl8) titleEl8.textContent = CHART_TITLE_HIT;
+            if (titleEl9) titleEl9.textContent = CHART_TITLE_HIT_DIST;
+
+            function renderEmptySmallChart(target, h) {
+                if (!target) return;
+                const w = 1000;
+                const margin = { l: 55, r: 10, t: 20, b: 24 };
+                target.innerHTML = `
+                    <svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" style="width:100%;height:100%;">
+                        <rect x="0" y="0" width="${w}" height="${h}" fill="#0f1620" stroke="#2c3a4c" />
+                        <line x1="${margin.l}" y1="${h-margin.b}" x2="${w-margin.r}" y2="${h-margin.b}" stroke="#1f2a38" stroke-width="1"/>
+                        <line x1="${margin.l}" y1="${margin.t}" x2="${margin.l}" y2="${h-margin.b}" stroke="#1f2a38" stroke-width="1"/>
+                    </svg>
+                `;
+            }
+
+            function renderEmptyTable(target, headers, rowLabels, summaryLabel) {
+                if (!target) return;
+                const head = headers.map(h => `<th>${h}</th>`).join('');
+                const rows = rowLabels.map(r => {
+                    const cells = headers.slice(1).map(()=>'<td>—</td>').join('');
+                    return `<tr><td>${r}</td>${cells}</tr>`;
+                }).join('');
+                const summaryCells = headers.slice(1).map(()=>'<td>—</td>').join('');
+                const summaryRow = summaryLabel ? `<tr class="summary-row"><td>${summaryLabel}</td>${summaryCells}</tr>` : '';
+                target.innerHTML = `
+                    <table class="result-table">
+                        <thead><tr>${head}</tr></thead>
+                        <tbody>
+                            ${rows}
+                            ${summaryRow}
+                        </tbody>
+                    </table>
+                `;
+            }
+
+            renderEmptySmallChart(chartBox1, 180);
+            renderEmptySmallChart(chartBox2, 180);
+            renderEmptySmallChart(chartBox3, 200);
+            renderEmptyTable(meetTableCard, ['Kar','Min.','Átlag','95%','98%','Max.'], ['A','B','C','D'], 'Σ');
+            renderEmptyTable(queueHitTableCard, ['Kar','Min.','Átlag','95%','98%','Max.'], ['A','B','C','D'], 'Σ');
+            renderEmptyTable(queueTableCard, ['Kar','50%','Átlag','95%','98%','99%'], ['A','B','C','D'], 'ÁTL');
+
+            iframe?.addEventListener('load', () => {
+                crossReady = true;
+            });
+
+            // Általános, paraméterezhető rajzoló
+function renderChart({
+  svgId,
+  xMin, xMax, yMin, yMax,
+  xStep, yStep,
+  xLabelSuffix = '', yLabelSuffix = '',
+  series = [],
+  legend = true,
+  theme = {},
+  title = ''
+}) {
+  const svg = document.getElementById(svgId);
+  if (!svg) return;
+  const width = 1000;
+  const rootStyles = getComputedStyle(document.documentElement);
+  const aspectVal = parseFloat(rootStyles.getPropertyValue('--chart-aspect-value')) || 1.5;
+  const height = Math.round(width / aspectVal);
+  const margin = { left: 60, right: 40, top: 20, bottom: 60 };
+  svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+  const colors = {
+    panel: theme.panel || '#111a25',
+    border: theme.border || '#2c3a4c',
+    bg: theme.bg || '#0f1620',
+    grid: theme.grid || '#1f2a38',
+    gridMinor: theme.gridMinor || '#2c3a4c',
+    text: theme.text || '#cfd8e3',
+    textMuted: theme.textMuted || '#7b8ba3',
+    accent: theme.accent || '#5dade2'
+  };
+  const plotW = width - margin.left - margin.right;
+  const plotH = height - margin.top - margin.bottom;
+
+  const xTo = (x) => margin.left + (x - xMin) / (xMax - xMin) * plotW;
+  const yTo = (y) => height - margin.bottom - (y - yMin) / (yMax - yMin) * plotH;
+
+  const axis = svg.querySelector('[data-role="axis"]');
+  const ticksX = svg.querySelector('[data-role="ticks-x"]');
+  const ticksY = svg.querySelector('[data-role="ticks-y"]');
+  let seriesGroup = svg.querySelector('[data-role="series"]');
+  let legendGroup = svg.querySelector('[data-role="legend"]');
+  if (!seriesGroup) {
+    seriesGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    seriesGroup.setAttribute('data-role','series');
+    svg.appendChild(seriesGroup);
+  }
+  if (!legendGroup) {
+    legendGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    legendGroup.setAttribute('data-role','legend');
+    svg.appendChild(legendGroup);
+  }
+
+
+  if (axis) {
+    axis.innerHTML = `
+      <line x1="${margin.left}" y1="${height - margin.bottom}" x2="${width - margin.right}" y2="${height - margin.bottom}" stroke="${colors.grid}" stroke-width="1"/>
+      <line x1="${margin.left}" y1="${margin.top}" x2="${margin.left}" y2="${height - margin.bottom}" stroke="${colors.grid}" stroke-width="1"/>
+    `;
+  }
+
+  if (ticksX) {
+    let html = '';
+    for (let x = xMin; x <= xMax + 1e-6; x += xStep) {
+      const px = xTo(x).toFixed(2);
+      html += `<line x1="${px}" y1="${margin.top}" x2="${px}" y2="${height - margin.bottom}" stroke="${colors.grid}" stroke-width="1"/>`;
+      html += `<line x1="${px}" y1="${height - margin.bottom}" x2="${px}" y2="${height - margin.bottom + 5}" stroke="${colors.gridMinor}" stroke-width="1"/>`;
+      html += `<text x="${px}" y="${height - margin.bottom + 18}" fill="${colors.text}" font-size="22" font-family="IBM Plex Mono, Consolas, monospace" text-anchor="middle">${x}${xLabelSuffix}</text>`;
+    }
+    ticksX.innerHTML = html;
+  }
+
+  if (ticksY) {
+    let html = '';
+    for (let y = yMin; y <= yMax + 1e-6; y += yStep) {
+      const py = yTo(y).toFixed(2);
+      const yLabel = (Math.round(y * 10) / 10).toFixed(1);
+      html += `<line x1="${margin.left}" y1="${py}" x2="${width - margin.right}" y2="${py}" stroke="${colors.grid}" stroke-width="1"/>`;
+      html += `<line x1="${margin.left - 5}" y1="${py}" x2="${margin.left}" y2="${py}" stroke="${colors.gridMinor}" stroke-width="1"/>`;
+      html += `<text x="${margin.left - 10}" y="${(parseFloat(py) + 4).toFixed(2)}" fill="${colors.text}" font-size="22" font-family="IBM Plex Mono, Consolas, monospace" text-anchor="end">${yLabel}${yLabelSuffix}</text>`;
+    }
+    ticksY.innerHTML = html;
+  }
+
+  let htmlSeries = '';
+  series.forEach(s => {
+    const pts = s.data.map(p => `${xTo(p.x).toFixed(2)},${yTo(p.y).toFixed(2)}`).join(' ');
+    htmlSeries += `<polyline fill="none" stroke="${s.color}" stroke-width="${s.width || 1.0}" points="${pts}" />`;
+  });
+  seriesGroup.innerHTML = htmlSeries;
+  svg.style.background = 'transparent';
+  svg.style.border = 'none';
+
+  if (legend) {
+    const legendWidth = series.length * 50;
+    const legendStart = width - margin.right - legendWidth;
+    const items = series.map((s, idx) => `
+      <g transform="translate(${legendStart + idx*50},${margin.top + 4})">
+        <rect x="0" y="-8" width="12" height="12" rx="3" fill="${s.color}" />
+        <text x="18" y="3" font-size="12" font-family="IBM Plex Mono, Consolas, monospace" fill="${colors.textMuted}">${s.label || ''}</text>
+      </g>`).join('');
+    legendGroup.innerHTML = items;
+  } else {
+    legendGroup.innerHTML = '';
+  }
+}
+
+            function renderResults(data) {
+                if (!meetTableCard || !queueHitTableCard) return;
+                const { priorities, orders, vehicles, passTimes, axes } = data || {};
+                const arms = ['A', 'B', 'C', 'D'];
+
+                const res = getResolution();
+                const isecPerHour = 3600 * res;
+                const cycles = getCycles();
+                const distinctOrders = Object.values(orders || {}).filter(v => v > 0);
+                const palette = buildPalette(distinctOrders);
+
+                // Több ciklus futtatása
+                const meetSums = {A:0,B:0,C:0,D:0};
+                const meetMin = {A:Infinity,B:Infinity,C:Infinity,D:Infinity};
+                const meetMax = {A:0,B:0,C:0,D:0};
+                const queueHitSums = {A:0,B:0,C:0,D:0};
+                const queueHitMin = {A:Infinity,B:Infinity,C:Infinity,D:Infinity};
+                const queueHitMax = {A:0,B:0,C:0,D:0};
+                const queueSums = {A:0,B:0,C:0,D:0};
+                const queueSamples = {A:[],B:[],C:[],D:[]};
+                const meetSamples = {A:[],B:[],C:[],D:[]}; // találkozás/ciklus
+                const queueHitSamples = {A:[],B:[],C:[],D:[]}; // sorrafutás/ciklus
+                const queueSumPerSec = {A:Array(3600).fill(0),B:Array(3600).fill(0),C:Array(3600).fill(0),D:Array(3600).fill(0)};
+                const meetSumPerSec = {A:Array(3600).fill(0),B:Array(3600).fill(0),C:Array(3600).fill(0),D:Array(3600).fill(0)};
+                const queueHitSumPerSec = {A:Array(3600).fill(0),B:Array(3600).fill(0),C:Array(3600).fill(0),D:Array(3600).fill(0)};
+                let lastSim = null;
+                for (let c=0; c<cycles; c++) {
+                    const sim = simulateTraffic({ data, res, isecPerHour, palette });
+                    if (c === cycles-1) lastSim = sim; // utolsó lefutás diagramokhoz
+                    if (!sim) continue;
+                    const { timetable } = sim;
+                    const meetPerArmThisCycle = {A:0,B:0,C:0,D:0};
+                    const queueHitPerArmThisCycle = {A:0,B:0,C:0,D:0};
+                    for (let t=0; t<isecPerHour; t++) {
+                        arms.forEach(a=>{
+                            queueSums[a] += timetable[t][a].queue || 0;
+                            queueSamples[a].push(timetable[t][a].queue || 0);
+                        });
+                        arms.forEach(a=>{
+                            if (timetable[t][a].meet) {
+                                meetSums[a] += 1;
+                                meetPerArmThisCycle[a] += 1;
+                            }
+                            if (timetable[t][a].queueHit) {
+                                queueHitSums[a] += 1;
+                                queueHitPerArmThisCycle[a] += 1;
+                            }
+                        });
+
+                        // sec-enkénti átlaghoz: összeg a sec-ben
+                        const secIdx = Math.min(3599, Math.floor(t / res));
+                        arms.forEach(a=>{
+                            queueSumPerSec[a][secIdx] += timetable[t][a].queue || 0;
+                            if (timetable[t][a].meet) meetSumPerSec[a][secIdx] += 1;
+                            if (timetable[t][a].queueHit) queueHitSumPerSec[a][secIdx] += 1;
+                        });
+                    }
+                    arms.forEach(a=>{
+                        meetMin[a] = Math.min(meetMin[a], meetPerArmThisCycle[a]);
+                        meetMax[a] = Math.max(meetMax[a], meetPerArmThisCycle[a]);
+                        meetSamples[a].push(meetPerArmThisCycle[a]);
+                        queueHitMin[a] = Math.min(queueHitMin[a], queueHitPerArmThisCycle[a]);
+                        queueHitMax[a] = Math.max(queueHitMax[a], queueHitPerArmThisCycle[a]);
+                        queueHitSamples[a].push(queueHitPerArmThisCycle[a]);
+                    });
+                }
+
+                const meetAvg = {};
+                const queueHitAvg = {};
+                arms.forEach(a=>{
+                    meetAvg[a] = meetSums[a] / cycles;
+                    queueHitAvg[a] = queueHitSums[a] / cycles;
+                });
+
+                // percentilis helper
+                const percentile = (arr, p) => {
+                    if (!arr.length) return 0;
+                    const sorted = [...arr].sort((a,b)=>a-b);
+                    const idx = Math.min(sorted.length-1, Math.max(0, Math.floor((p/100) * (sorted.length-1))));
+                    return sorted[idx];
+                };
+
+                const queueP50 = {}, queueP95 = {}, queueP98 = {}, queueP99 = {};
+                const meetP95 = {}, meetP98 = {};
+                const queueHitP95 = {}, queueHitP98 = {};
+                arms.forEach(a=>{
+                    queueP50[a] = percentile(queueSamples[a], 50);
+                    queueP95[a] = percentile(queueSamples[a], 95);
+                    queueP98[a] = percentile(queueSamples[a], 98);
+                    queueP99[a] = percentile(queueSamples[a], 99);
+                    meetP95[a]  = percentile(meetSamples[a], 95);
+                    meetP98[a]  = percentile(meetSamples[a], 98);
+                    queueHitP95[a] = percentile(queueHitSamples[a], 95);
+                    queueHitP98[a] = percentile(queueHitSamples[a], 98);
+                });
+
+                const f1 = (v)=> v===Infinity ? '0,0' : Number(v).toFixed(1).replace('.',',');
+                const rowsSummary = arms.map(a => `
+                    <tr>
+                        <td>${a}</td>
+                        <td>${f1(meetMin[a])}</td>
+                        <td>${f1(meetAvg[a])}</td>
+                        <td>${f1(meetP95[a])}</td>
+                        <td>${f1(meetP98[a])}</td>
+                        <td>${f1(meetMax[a])}</td>
+                    </tr>
+                `).join('');
+                const sumRow = (() => {
+                    const sumMin = arms.reduce((s,a)=> s + (meetMin[a]===Infinity ? 0 : meetMin[a]), 0);
+                    const sumAvg = arms.reduce((s,a)=> s + meetAvg[a], 0);
+                    const sumP95 = arms.reduce((s,a)=> s + meetP95[a], 0);
+                    const sumP98 = arms.reduce((s,a)=> s + meetP98[a], 0);
+                    const sumMax = arms.reduce((s,a)=> s + meetMax[a], 0);
+                    return `
+                        <tr class="summary-row">
+                              <td>&Sigma;</td>
+                              <td>${f1(sumMin)}</td>
+                              <td>${f1(sumAvg)}</td>
+                            <td>${f1(sumP95)}</td>
+                            <td>${f1(sumP98)}</td>
+                            <td>${f1(sumMax)}</td>
+                        </tr>
+                    `;
+                })();
+
+                meetTableCard.innerHTML = `
+                    <table class="result-table">
+                        <thead>
+                            <tr><th>Kar</th><th>Min.</th><th>Átlag</th><th>95%</th><th>98%</th><th>Max.</th></tr>
+                        </thead>
+                        <tbody>
+                            ${rowsSummary}
+                            ${sumRow}
+                        </tbody>
+                    </table>
+                `;
+
+                // Torlódás táblázat (queue) -> Eredménytábla 2
+                const rowsQueue = arms.map(a => {
+                    const avgQ = queueSums[a] / (isecPerHour * cycles);
+                    return `
+                        <tr>
+                            <td>${a}</td>
+                            <td>${f1(queueP50[a])}</td>
+                            <td>${f1(avgQ)}</td>
+                            <td>${f1(queueP95[a])}</td>
+                            <td>${f1(queueP98[a])}</td>
+                            <td>${f1(queueP99[a])}</td>
+                        </tr>
+                    `;
+                }).join('');
+                const avgRowQ = (() => {
+                    const avg50 = arms.reduce((s,a)=> s + queueP50[a], 0) / arms.length;
+                    const avgAvg = arms.reduce((s,a)=> s + (queueSums[a] / (isecPerHour * cycles)), 0) / arms.length;
+                    const avg95 = arms.reduce((s,a)=> s + queueP95[a], 0) / arms.length;
+                    const avg98 = arms.reduce((s,a)=> s + queueP98[a], 0) / arms.length;
+                    const avg99 = arms.reduce((s,a)=> s + queueP99[a], 0) / arms.length;
+                    return `
+                        <tr class="summary-row">
+                            <td>ÁTL</td>
+                            <td>${f1(avg50)}</td>
+                            <td>${f1(avgAvg)}</td>
+                            <td>${f1(avg95)}</td>
+                            <td>${f1(avg98)}</td>
+                            <td>${f1(avg99)}</td>
+                        </tr>
+                    `;
+                })();
+                const tableQueue = `
+                    <table class="result-table">
+                        <thead>
+                            <tr><th>Kar</th><th>50%</th><th>Átlag</th><th>95%</th><th>98%</th><th>99%</th></tr>
+                        </thead>
+                        <tbody>
+                            ${rowsQueue}
+                            ${avgRowQ}
+                        </tbody>
+                    </table>
+                `;
+                // eredménytábla 2 kapja
+                if (queueTableCard) {
+                    queueTableCard.innerHTML = tableQueue;
+                }
+
+                // Sorrafutás táblázat (queueHit) -> Eredménytábla 1 alá
+                const rowsQueueHit = arms.map(a => `
+                    <tr>
+                        <td>${a}</td>
+                        <td>${f1(queueHitMin[a]===Infinity?0:queueHitMin[a])}</td>
+                        <td>${f1(queueHitAvg[a])}</td>
+                        <td>${f1(queueHitP95[a])}</td>
+                        <td>${f1(queueHitP98[a])}</td>
+                        <td>${f1(queueHitMax[a])}</td>
+                    </tr>
+                `).join('');
+                const sumRowQH = (() => {
+                    const sMin = arms.reduce((s,a)=> s + (queueHitMin[a]===Infinity?0:queueHitMin[a]), 0);
+                    const sAvg = arms.reduce((s,a)=> s + queueHitAvg[a], 0);
+                    const s95 = arms.reduce((s,a)=> s + queueHitP95[a], 0);
+                    const s98 = arms.reduce((s,a)=> s + queueHitP98[a], 0);
+                    const sMax = arms.reduce((s,a)=> s + queueHitMax[a], 0);
+                      return `
+                          <tr class="summary-row">
+                              <td>&Sigma;</td>
+                              <td>${f1(sMin)}</td>
+                              <td>${f1(sAvg)}</td>
+                            <td>${f1(s95)}</td>
+                            <td>${f1(s98)}</td>
+                            <td>${f1(sMax)}</td>
+                        </tr>
+                    `;
+                })();
+                queueHitTableCard.innerHTML = `
+                    <table class="result-table">
+                        <thead>
+                            <tr><th>Kar</th><th>Min.</th><th>Átlag</th><th>95%</th><th>98%</th><th>Max.</th></tr>
+                        </thead>
+                        <tbody>
+                            ${rowsQueueHit}
+                            ${sumRowQH}
+                        </tbody>
+                    </table>
+                `;
+
+
+                // diagramok az utolsó lefutás alapján
+                const simForCharts = lastSim;
+                renderChartArrivals(simForCharts, palette, isecPerHour);
+                renderChartMeets(simForCharts, isecPerHour);
+                renderChartQueues(simForCharts, palette, isecPerHour);
+                // csak aktív karok (priority>0, order>0, jármű/h>0)
+                const activeArms = arms.filter(a =>
+                    (priorities?.[a] || 0) > 0 &&
+                    (orders?.[a] || 0) > 0 &&
+                    (vehicles?.[a] || 0) > 0
+                );
+                // új 4. diagram: renderChart alapú átlagos sorhossz
+                if (chartBox4) {
+                    // cím elemet is frissítjük
+                    if (titleEl4) titleEl4.textContent = CHART_TITLE_QUEUE;
+                    let maxAvg = 1;
+                    let maxValSeen = 0;
+                    const series = activeArms.map(a => {
+                        const pts = [];
+                        for (let s=0; s<3600; s++) {
+                            const avg = queueSumPerSec[a][s] / (cycles * res);
+                            const xMin = s/60;
+                            pts.push({ x: xMin, y: avg });
+                            if (avg > maxValSeen) maxValSeen = avg;
+                        }
+                        const color = orderToColor((orders||{})[a], palette);
+                        return { label: a, color, width: 1, data: pts };
+                    });
+                    const yMaxAdj = Math.max(0.1, Math.ceil(maxValSeen * 1.1 * 10) / 10); // +10%, 1 tized, nem clamp 1-re
+                    const yStep = Math.max(0.1, Math.floor((yMaxAdj/4) * 10) / 10);
+                    renderChart({
+                        svgId: 'chart4svg',
+                        xMin: 0, xMax: 60,
+                        yMin: 0, yMax: yMaxAdj,
+                        xStep: 5, yStep,
+                        xLabelSuffix: 'p',
+                        series,
+                        theme: {
+                            panel: '#111a25',
+                            border: '#2c3a4c',
+                            bg: '#0f1620',
+                            grid: '#1f2a38',
+                            gridMinor: '#2c3a4c',
+                            text: '#cfd8e3',
+                            textMuted: '#7b8ba3',
+                            accent: '#5dade2'
+                        }
+                    });
+                }
+                // új 5. diagram: renderChart alapú eloszlás
+                if (titleEl5) titleEl5.textContent = CHART_TITLE_DIST;
+                let globalMax = 1;
+                const sorted = {};
+                activeArms.forEach(a => {
+                    const arr = (queueSamples[a] || []).slice().sort((aa,bb)=>aa-bb);
+                    sorted[a] = arr;
+                    if (arr.length) globalMax = Math.max(globalMax, arr[arr.length-1]);
+                });
+                const seriesDist = activeArms.map(a => {
+                    const color = orderToColor((orders||{})[a], palette);
+                    const arr = sorted[a] || [];
+                    const pts = [];
+                    if (arr.length) {
+                        for (let p=0; p<=100; p++) {
+                            const idx = Math.floor((p/100)*(arr.length-1));
+                            pts.push({ x: p, y: arr[idx] });
+                        }
+                    }
+                    return { label: a, color, width: 1, data: pts };
+                });
+                const yMaxAdj = Math.max(1, globalMax + 1); // +1 a legnagyobbra
+                const yStep = Math.max(1, Math.floor(yMaxAdj/4));
+                renderChart({
+                    svgId: 'chart5svg',
+                    xMin: 0, xMax: 100,
+                    yMin: 0, yMax: yMaxAdj,
+                    xStep: 10, yStep,
+                    xLabelSuffix: '%',
+                    series: seriesDist,
+                    theme: {
+                        panel: '#111a25',
+                        border: '#2c3a4c',
+                        bg: '#0f1620',
+                        grid: '#1f2a38',
+                        gridMinor: '#2c3a4c',
+                        text: '#cfd8e3',
+                        textMuted: '#7b8ba3',
+                        accent: '#5dade2'
+                    }
+                });
+
+                // új 6. diagram: találkozások időben (átlag/sec)
+                let maxMeetSeen = 0;
+                const seriesMeet = activeArms.map(a => {
+                    const pts = [];
+                    for (let s = 0; s < 3600; s++) {
+                        const avg = meetSumPerSec[a][s] / (cycles * res);
+                        const xMin = s / 60;
+                        pts.push({ x: xMin, y: avg });
+                        if (avg > maxMeetSeen) maxMeetSeen = avg;
+                    }
+                    const color = orderToColor((orders||{})[a], palette);
+                    return { label: a, color, width: 1, data: pts };
+                });
+                const yMeetMax = Math.max(0.1, Math.ceil(maxMeetSeen * 1.1 * 10) / 10);
+                const yMeetStep = Math.max(0.1, Math.floor((yMeetMax/4) * 10) / 10);
+                renderChart({
+                    svgId: 'chart6svg',
+                    xMin: 0, xMax: 60,
+                    yMin: 0, yMax: yMeetMax,
+                    xStep: 5, yStep: yMeetStep,
+                    xLabelSuffix: 'p',
+                    series: seriesMeet,
+                    theme: {
+                        panel: '#111a25',
+                        border: '#2c3a4c',
+                        bg: '#0f1620',
+                        grid: '#1f2a38',
+                        gridMinor: '#2c3a4c',
+                        text: '#cfd8e3',
+                        textMuted: '#7b8ba3',
+                        accent: '#5dade2'
+                    }
+                });
+
+                // új 7. diagram: találkozások eloszlása
+                let meetMaxDist = 1;
+                const sortedMeet = {};
+                activeArms.forEach(a => {
+                    const arr = (meetSamples[a] || []).slice().sort((aa,bb)=>aa-bb);
+                    sortedMeet[a] = arr;
+                    if (arr.length) meetMaxDist = Math.max(meetMaxDist, arr[arr.length-1]);
+                });
+                const seriesMeetDist = activeArms.map(a => {
+                    const color = orderToColor((orders||{})[a], palette);
+                    const arr = sortedMeet[a] || [];
+                    const pts = [];
+                    if (arr.length) {
+                        for (let p=0; p<=100; p++) {
+                            const idx = Math.floor((p/100)*(arr.length-1));
+                            pts.push({ x: p, y: arr[idx] });
+                        }
+                    }
+                    return { label: a, color, width: 1, data: pts };
+                });
+                const yMeetMaxAdj = Math.max(1, meetMaxDist + 1);
+                const yMeetStepAdj = Math.max(1, Math.floor(yMeetMaxAdj/4));
+                renderChart({
+                    svgId: 'chart7svg',
+                    xMin: 0, xMax: 100,
+                    yMin: 0, yMax: yMeetMaxAdj,
+                    xStep: 10, yStep: yMeetStepAdj,
+                    xLabelSuffix: '%',
+                    series: seriesMeetDist,
+                    theme: {
+                        panel: '#111a25',
+                        border: '#2c3a4c',
+                        bg: '#0f1620',
+                        grid: '#1f2a38',
+                        gridMinor: '#2c3a4c',
+                        text: '#cfd8e3',
+                        textMuted: '#7b8ba3',
+                        accent: '#5dade2'
+                    }
+                });
+
+                // új 8. diagram: sorrafutások időben (átlag/sec)
+                let maxHitSeen = 0;
+                const seriesHit = activeArms.map(a => {
+                    const pts = [];
+                    for (let s = 0; s < 3600; s++) {
+                        const avg = queueHitSumPerSec[a][s] / (cycles * res);
+                        const xMin = s / 60;
+                        pts.push({ x: xMin, y: avg });
+                        if (avg > maxHitSeen) maxHitSeen = avg;
+                    }
+                    const color = orderToColor((orders||{})[a], palette);
+                    return { label: a, color, width: 1, data: pts };
+                });
+                const yHitMax = Math.max(0.1, Math.ceil(maxHitSeen * 1.1 * 10) / 10);
+                const yHitStep = Math.max(0.1, Math.floor((yHitMax/4) * 10) / 10);
+                renderChart({
+                    svgId: 'chart8svg',
+                    xMin: 0, xMax: 60,
+                    yMin: 0, yMax: yHitMax,
+                    xStep: 5, yStep: yHitStep,
+                    xLabelSuffix: 'p',
+                    series: seriesHit,
+                    theme: {
+                        panel: '#111a25',
+                        border: '#2c3a4c',
+                        bg: '#0f1620',
+                        grid: '#1f2a38',
+                        gridMinor: '#2c3a4c',
+                        text: '#cfd8e3',
+                        textMuted: '#7b8ba3',
+                        accent: '#5dade2'
+                    }
+                });
+
+                // új 9. diagram: sorrafutások eloszlása
+                let hitMaxDist = 1;
+                const sortedHit = {};
+                activeArms.forEach(a => {
+                    const arr = (queueHitSamples[a] || []).slice().sort((aa,bb)=>aa-bb);
+                    sortedHit[a] = arr;
+                    if (arr.length) hitMaxDist = Math.max(hitMaxDist, arr[arr.length-1]);
+                });
+                const seriesHitDist = activeArms.map(a => {
+                    const color = orderToColor((orders||{})[a], palette);
+                    const arr = sortedHit[a] || [];
+                    const pts = [];
+                    if (arr.length) {
+                        for (let p=0; p<=100; p++) {
+                            const idx = Math.floor((p/100)*(arr.length-1));
+                            pts.push({ x: p, y: arr[idx] });
+                        }
+                    }
+                    return { label: a, color, width: 1, data: pts };
+                });
+                const yHitMaxAdj = Math.max(1, hitMaxDist + 1);
+                const yHitStepAdj = Math.max(1, Math.floor(yHitMaxAdj/4));
+                renderChart({
+                    svgId: 'chart9svg',
+                    xMin: 0, xMax: 100,
+                    yMin: 0, yMax: yHitMaxAdj,
+                    xStep: 10, yStep: yHitStepAdj,
+                    xLabelSuffix: '%',
+                    series: seriesHitDist,
+                    theme: {
+                        panel: '#111a25',
+                        border: '#2c3a4c',
+                        bg: '#0f1620',
+                        grid: '#1f2a38',
+                        gridMinor: '#2c3a4c',
+                        text: '#cfd8e3',
+                        textMuted: '#7b8ba3',
+                        accent: '#5dade2'
+                    }
+                });
+            }
+
+            runBtn?.addEventListener('click', () => {
+                if (!crossReady || !iframe?.contentWindow) {
+                    alert('A KOEM_cross még nem töltődött be. Próbáld újra pár másodperc múlva.');
+                    return;
+                }
+                renderEmptySmallChart(chartBox1, 180);
+                renderEmptySmallChart(chartBox2, 180);
+                renderEmptySmallChart(chartBox3, 200);
+                // kérés a gyerek felé
+                iframe.contentWindow.postMessage({ type: 'request-cross-data' }, '*');
+            });
+
+            // fogadjuk a választ a gyerektől
+            window.addEventListener('message', (event) => {
+                if (event.source !== iframe?.contentWindow) return;
+                const msg = event.data;
+                if (!msg || msg.type !== 'cross-data') return;
+                lastData = msg.payload || null;
+                renderResults(lastData);
+            });
+
+            // ---------------------- SZIMULÁCIÓ ------------------------
+            function simulateTraffic({ data, res, isecPerHour, palette }) {
+                if (!data) return null;
+                const { priorities, orders, vehicles, passTimes } = data;
+                const arms = ['A','B','C','D'];
+                const kSec = getFollowK();
+                const kIsec = kSec * res;
+
+                const perArmTimes = {};
+
+                arms.forEach(arm => {
+                    const ord = orders?.[arm] || 0;
+                    const vehPerHour = vehicles?.[arm] || 0;
+                    if (ord === 0 || !vehPerHour || vehPerHour <= 0) return;
+
+                    const count = Math.max(0, Math.round(vehPerHour));
+                    const raw = [];
+                    for (let i = 0; i < count; i++) {
+                        // 1..isecPerHour
+                        raw.push(1 + Math.floor(Math.random() * isecPerHour));
+                    }
+                    raw.sort((a,b)=>a-b);
+
+                    const spaced = [];
+                    raw.forEach(t => {
+                        if (spaced.length === 0) {
+                            spaced.push(t);
+                        } else {
+                            const last = spaced[spaced.length - 1];
+                            if (t - last >= kIsec) {
+                                spaced.push(t);
+                            } else {
+                                spaced.push(last + kIsec);
+                            }
+                        }
+                    });
+
+                    perArmTimes[arm] = spaced;
+                });
+
+                // Timetable (sparse feltöltés, de tömbként)
+                const blankArm = () => ({ arrivals:0, meet:false, queueHit:false, queue:0, inCross:false });
+                const timetable = Array.from({ length: isecPerHour }, () => ({
+                    A: blankArm(), B: blankArm(), C: blankArm(), D: blankArm()
+                }));
+
+                // érkezések bejelölése (arrive)
+                Object.entries(perArmTimes).forEach(([arm, times]) => {
+                    times?.forEach(t => {
+                        const idx = Math.min(isecPerHour - 1, Math.max(0, Math.round(t)));
+                        timetable[idx][arm].arrivals = (timetable[idx][arm].arrivals || 0) + 1;
+                    });
+                });
+
+                // fő isec ciklus
+                for (let t = 0; t < isecPerHour; t++) {
+                    const current = timetable[t];
+                    const prev = t > 0 ? timetable[t-1] : null;
+
+                    // queue másolása előzőből
+                    if (prev) {
+                        arms.forEach(a => {
+                            current[a].queue = prev[a].queue;
+                        });
+                    }
+
+                    // érkezések kezelése: sorrafutás elsőbbség, különben meet
+                    arms.forEach(a => {
+                        if ((current[a].arrivals || 0) > 0) {
+                            const arrivesNow = current[a].arrivals;
+                            current[a].queue += arrivesNow;
+
+                            // van-e idegen autó a kereszteződésben
+                            const opposite = {A:'C',B:'D',C:'A',D:'B'}[a];
+                            const axisActive = (a==='A'||a==='C') ? !!(data.axes?.AC_active) : !!(data.axes?.BD_active);
+                            const othersIn = arms.some(b => {
+                                if (b === a) return false;
+                                if (axisActive && b === opposite) return false;
+                                return current[b].inCross;
+                            });
+                            // sorrafutás prioritás: ha már volt sor, queueHit, különben meet
+                            if (prev && (prev[a].queue > 0)) {
+                                current[a].queueHit = true;
+                                current[a].meet = false;
+                            } else if (othersIn) {
+                                current[a].meet = true;
+                                current[a].queueHit = false;
+                            } else {
+                                current[a].meet = false;
+                                current[a].queueHit = false;
+                            }
+                        }
+                    });
+
+                    // sorrendi alciklus
+                    const activeArms = arms.filter(a => (orders?.[a]||0) > 0 && (vehicles?.[a]||0) > 0);
+                    activeArms.sort((a,b)=>{
+                        const oa = orders[a]||0, ob = orders[b]||0;
+                        if (oa !== ob) return oa - ob;
+                        return Math.random() - 0.5; // azonos order -> véletlen
+                    });
+
+                    activeArms.forEach(a => {
+                        if (current[a].queue <= 0) return;
+                        // mehet-e?
+                        const opposite = {A:'C',B:'D',C:'A',D:'B'}[a];
+                        const axisActive = (a==='A'||a==='C') ? !!(data.axes?.AC_active) : !!(data.axes?.BD_active);
+                        const anyIn = arms.some(b => current[b].inCross);
+                        const onlyOpposite = arms.every(b => {
+                            if (!current[b].inCross) return true;
+                            return b === a || (axisActive && b === opposite);
+                        });
+                        const canGo = !anyIn || (axisActive && onlyOpposite);
+                        if (!canGo) return;
+
+                        // kilép a sorból
+                        current[a].queue -= 1;
+
+                        // áthajtási idő isec-ben
+                        const passSec = passTimes?.[a] || 0;
+                        const dur = Math.max(1, Math.round(passSec * res));
+                        for (let dt = 0; dt < dur; dt++) {
+                            const idx = t + dt;
+                            if (idx >= isecPerHour) break;
+                            timetable[idx][a].inCross = true;
+                        }
+                    });
+                }
+
+                return { perArmTimes, timetable };
+            }
+
+            function renderChartArrivals(sim, palette, isecPerHour) {
+                if (!chartBox1) return;
+                if (!sim) {
+                    chartBox1.textContent = 'Nincs adat a diagramhoz.';
+                    return;
+                }
+                const { perArmTimes } = sim;
+                const arms = ['A','B','C','D'];
+                const w = 1000; // virtual width
+                const h = 180;
+                const margin = { l: 55, r: 10, t: 20, b: 24 };
+                const innerW = w - margin.l - margin.r;
+                const band = innerW / 3600; // sec-re skálázunk, isec -> sec = t/res
+                const res = getResolution();
+
+                const yPos = { A: 30, B: 70, C: 110, D: 150 };
+
+                const circles = [];
+                arms.forEach(arm => {
+                    const times = perArmTimes[arm];
+                    if (!times || !times.length) return;
+                    const color = orderToColor((lastData?.orders || {})[arm], palette);
+                    times.forEach(t => {
+                        const sec = t / res;
+                        const x = margin.l + Math.min(innerW, Math.max(0, sec * band));
+                        const y = yPos[arm] || 30;
+                        circles.push(`<circle cx="${x}" cy="${y}" r="4" fill="${color}" fill-opacity="0.8" />`);
+                    });
+                });
+
+                const axisTicks = [];
+                const tickEvery = 600; // 10 perc
+                for (let s=0; s<=3600; s+=tickEvery) {
+                    const x = margin.l + s * band;
+                    axisTicks.push(`<line x1="${x}" y1="${h-margin.b}" x2="${x}" y2="${h-margin.b+4}" stroke="#2c3a4c" stroke-width="1"/>`);
+                    axisTicks.push(`<text x="${x}" y="${h-margin.b+14}" font-size="11" fill="#7b8ba3" text-anchor="middle">${s/60}p</text>`);
+                }
+                // Y labels
+                const yLabels = arms.map(a => {
+                    const y = yPos[a] || 30;
+                    return `<text x="${margin.l-8}" y="${y+4}" font-size="11" fill="#7b8ba3" text-anchor="end">${a}</text>`;
+                }).join('');
+
+                const legend = arms.map(arm => {
+                    const color = orderToColor((lastData?.orders || {})[arm], palette);
+                    return `<g transform="translate(${margin.l + arms.indexOf(arm)*70},${14})">
+                        <rect x="0" y="-8" width="14" height="14" rx="3" fill="${color}" />
+                        <text x="20" y="3" font-size="11" fill="#7b8ba3">${arm}</text>
+                    </g>`;
+                }).join('');
+
+                chartBox1.innerHTML = `
+                    <svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" style="width:100%;height:100%;">
+                        <rect x="0" y="0" width="${w}" height="${h}" fill="#0f1620" stroke="#2c3a4c" />
+                        ${axisTicks.join('')}
+                        <line x1="${margin.l}" y1="${h-margin.b}" x2="${w-margin.r}" y2="${h-margin.b}" stroke="#1f2a38" stroke-width="1"/>
+                        ${yLabels}
+                        ${circles.join('')}
+                        ${legend}
+                    </svg>
+                `;
+            }
+
+            function renderChartMeets(sim, isecPerHour) {
+                if (!chartBox2) return;
+                if (!sim) {
+                    chartBox2.textContent = 'Nincs adat a diagramhoz.';
+                    return;
+                }
+                const { timetable } = sim;
+                const w = 1000, h = 180;
+                const margin = { l: 55, r: 10, t: 20, b: 24 };
+                const innerW = w - margin.l - margin.r;
+                const band = innerW / 3600;
+                const res = getResolution();
+                const series = [];
+                for (let t=0; t<isecPerHour; t++) {
+                    const meets = ['A','B','C','D'].filter(a => timetable[t][a]?.meet).length;
+                    series.push({ t, meets });
+                }
+                const maxY = Math.max(1, ...series.map(s=>s.meets));
+                const points = series.map(s=>{
+                    const sec = s.t / res;
+                    const x = margin.l + Math.min(innerW, Math.max(0, sec*band));
+                    const y = h - margin.b - (s.meets / maxY) * (h - margin.t - margin.b);
+                    return `${x},${y}`;
+                }).join(' ');
+
+                const ticks = [];
+                const tickEvery = 600;
+                for (let s=0; s<=3600; s+=tickEvery) {
+                    const x = margin.l + s*band;
+                    ticks.push(`<line x1="${x}" y1="${h-margin.b}" x2="${x}" y2="${h-margin.b+4}" stroke="#2c3a4c" stroke-width="1"/>`);
+                    ticks.push(`<text x="${x}" y="${h-margin.b+14}" font-size="11" fill="#7b8ba3" text-anchor="middle">${s/60}p</text>`);
+                }
+                const yTicks = [];
+                const yStep = Math.max(1, Math.floor(maxY/4));
+                for (let yv=0; yv<=maxY; yv+=yStep) {
+                    const y = h - margin.b - (yv / maxY) * (h - margin.t - margin.b);
+                    yTicks.push(`<line x1="${margin.l-4}" y1="${y}" x2="${margin.l}" y2="${y}" stroke="#2c3a4c" stroke-width="1"/>`);
+                    yTicks.push(`<text x="${margin.l-8}" y="${y+4}" font-size="11" fill="#7b8ba3" text-anchor="end">${yv}</text>`);
+                }
+
+                chartBox2.innerHTML = `
+                    <svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" style="width:100%;height:100%;">
+                        <rect x="0" y="0" width="${w}" height="${h}" fill="#0f1620" stroke="#2c3a4c" />
+                        ${ticks.join('')}
+                        <line x1="${margin.l}" y1="${h-margin.b}" x2="${w-margin.r}" y2="${h-margin.b}" stroke="#1f2a38" stroke-width="1"/>
+                        ${yTicks.join('')}
+                        ${points ? `<polyline fill="none" stroke="#e74c3c" stroke-width="2" points="${points}"/>` : ''}
+                        <text x="${margin.l}" y="${margin.t}" font-size="12" fill="#7b8ba3">Találkozások (db)</text>
+                    </svg>
+                `;
+            }
+
+            function renderChartQueues(sim, palette, isecPerHour) {
+                if (!chartBox3) return;
+                if (!sim) {
+                    chartBox3.textContent = 'Nincs adat a diagramhoz.';
+                    return;
+                }
+                const { timetable } = sim;
+                const w = 1000, h = 200;
+                const margin = { l: 55, r: 10, t: 20, b: 28 };
+                const innerW = w - margin.l - margin.r;
+                const res = getResolution();
+                const band = innerW / 3600;
+                const arms = ['A','B','C','D'];
+                const paletteMap = buildPalette(Object.values(lastData?.orders||{}));
+
+                // max queue for scaling
+                let maxQ = 1;
+                for (let t=0; t<isecPerHour; t++) {
+                    arms.forEach(a => { if (timetable[t][a]?.queue > maxQ) maxQ = timetable[t][a].queue; });
+                }
+
+                const paths = arms.map(a => {
+                    const color = orderToColor((lastData?.orders||{})[a], paletteMap);
+                    const pts = [];
+                    for (let t=0; t<isecPerHour; t++) {
+                        const q = timetable[t][a]?.queue || 0;
+                        const sec = t / res;
+                        const x = margin.l + Math.min(innerW, Math.max(0, sec*band));
+                        const y = h - margin.b - (q / maxQ) * (h - margin.t - margin.b);
+                        pts.push(`${x},${y}`);
+                    }
+                    return `<polyline fill="none" stroke="${color}" stroke-width="2" points="${pts.join(' ')}"/>`;
+                }).join('');
+
+                const ticks = [];
+                const tickEvery = 600;
+                for (let s=0; s<=3600; s+=tickEvery) {
+                    const x = margin.l + s*band;
+                    ticks.push(`<line x1="${x}" y1="${h-margin.b}" x2="${x}" y2="${h-margin.b+4}" stroke="#2c3a4c" stroke-width="1"/>`);
+                    ticks.push(`<text x="${x}" y="${h-margin.b+14}" font-size="11" fill="#7b8ba3" text-anchor="middle">${s/60}p</text>`);
+                }
+                const yTicks = [];
+                const yStep = Math.max(1, Math.floor(maxQ/4));
+                for (let yv=0; yv<=maxQ; yv+=yStep) {
+                    const y = h - margin.b - (yv / maxQ) * (h - margin.t - margin.b);
+                    yTicks.push(`<line x1="${margin.l-4}" y1="${y}" x2="${margin.l}" y2="${y}" stroke="#2c3a4c" stroke-width="1"/>`);
+                    yTicks.push(`<text x="${margin.l-8}" y="${y+4}" font-size="11" fill="#7b8ba3" text-anchor="end">${yv}</text>`);
+                }
+
+                chartBox3.innerHTML = `
+                    <svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" style="width:100%;height:100%;">
+                        <rect x="0" y="0" width="${w}" height="${h}" fill="#0f1620" stroke="#2c3a4c" />
+                        ${ticks.join('')}
+                        <line x1="${margin.l}" y1="${h-margin.b}" x2="${w-margin.r}" y2="${h-margin.b}" stroke="#1f2a38" stroke-width="1"/>
+                        ${yTicks.join('')}
+                        ${paths}
+                        <text x="${margin.l}" y="${margin.t}" font-size="12" fill="#7b8ba3">Sorhossz (jármű/db)</text>
+                    </svg>
+                `;
+            }
+
+            function renderChartAvgQueues(queueSumPerSec, res, cycles, palette) {
+                if (!chartBox4) return;
+                const arms = ['A','B','C','D'];
+                const w = 1000, h = 200;
+                const margin = { l: 55, r: 10, t: 20, b: 28 };
+                const innerW = w - margin.l - margin.r;
+                const band = innerW / 3600;
+                // átlagsor sec-enként (isec-ek átlagolva, majd ciklusszámra osztva)
+                const paths = arms.map(a=>{
+                    const color = orderToColor((lastData?.orders||{})[a], palette);
+                    const pts = [];
+                    for (let s=0; s<3600; s++) {
+                        const secSum = queueSumPerSec[a][s] || 0;
+                        const avg = secSum / (cycles * res); // isec átlag per sec per ciklus
+                        const x = margin.l + s * band;
+                        pts.push({x, avg});
+                    }
+                    const maxY = Math.max(1, ...pts.map(p=>p.avg));
+                    const coords = pts.map(p=>{
+                        const y = h - margin.b - (p.avg / maxY) * (h - margin.t - margin.b);
+                        return `${p.x},${y}`;
+                    }).join(' ');
+                    return { color, coords, maxY };
+                });
+
+                const maxYAll = Math.max(1, ...paths.map(p=>p.maxY));
+
+                const yTicks = [];
+                const yStep = Math.max(1, Math.floor(maxYAll/4));
+                for (let yv=0; yv<=maxYAll; yv+=yStep) {
+                    const y = h - margin.b - (yv / maxYAll) * (h - margin.t - margin.b);
+                    yTicks.push(`<line x1="${margin.l-4}" y1="${y}" x2="${margin.l}" y2="${y}" stroke="#2c3a4c" stroke-width="1"/>`);
+                    yTicks.push(`<text x="${margin.l-8}" y="${y+4}" font-size="11" fill="#7b8ba3" text-anchor="end">${formatNum(yv)}</text>`);
+                }
+
+                const ticks = [];
+                const tickEvery = 600;
+                for (let s=0; s<=3600; s+=tickEvery) {
+                    const x = margin.l + s*band;
+                    ticks.push(`<line x1="${x}" y1="${h-margin.b}" x2="${x}" y2="${h-margin.b+4}" stroke="#2c3a4c" stroke-width="1"/>`);
+                    ticks.push(`<text x="${x}" y="${h-margin.b+14}" font-size="11" fill="#7b8ba3" text-anchor="middle">${s/60}p</text>`);
+                }
+
+                const legend = arms.map((arm, idx) => {
+                    const color = orderToColor((lastData?.orders || {})[arm], palette);
+                    const xOff = (w - margin.r - 120) + idx * 40; // shift right
+                    return `<g transform="translate(${xOff},${margin.t})">
+                        <rect x="0" y="-8" width="14" height="14" rx="3" fill="${color}" />
+                        <text x="20" y="3" font-size="11" fill="#7b8ba3">${arm}</text>
+                    </g>`;
+                }).join('');
+
+                chartBox4.innerHTML = `
+                    <svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" style="width:100%;height:100%;">
+                        <rect x="0" y="0" width="${w}" height="${h}" fill="#0f1620" stroke="#2c3a4c" />
+                        ${ticks.join('')}
+                        <line x1="${margin.l}" y1="${h-margin.b}" x2="${w-margin.r}" y2="${h-margin.b}" stroke="#1f2a38" stroke-width="1"/>
+                        ${yTicks.join('')}
+                        ${paths.map(p=>`<polyline fill="none" stroke="${p.color}" stroke-width="2" points="${p.coords}"/>`).join('')}
+                        ${legend}
+                        <text x="${margin.l}" y="${margin.t}" font-size="12" fill="#7b8ba3">Átlagos sorhossz sec-enként</text>
+                    </svg>
+                `;
+            }
+
+            // Általános, paraméterezhető vonaldiagram-rajzoló (SVG)
+            function renderChartDistributions(queueSamples, palette, targetBox, title, arms) {
+                if (!targetBox) return;
+                const w = 1000, h = 200;
+                const margin = { l: 55, r: 10, t: 20, b: 28 };
+                const innerW = w - margin.l - margin.r;
+                const innerH = h - margin.t - margin.b;
+                const legend = arms.map(arm => {
+                    const color = orderToColor((lastData?.orders || {})[arm], palette);
+                    return `<g transform="translate(${margin.l + arms.indexOf(arm)*70},${12})">
+                        <rect x="0" y="-8" width="14" height="14" rx="3" fill="${color}" />
+                        <text x="20" y="3" font-size="11" fill="#7b8ba3">${arm}</text>
+                    </g>`;
+                }).join('');
+
+                // előrendezzük és meghatározzuk globális maxot a skálázáshoz
+                const sortedPerArm = {};
+                let globalMaxVal = 1;
+                arms.forEach(arm => {
+                    const arr = (queueSamples[arm]||[]).slice().sort((a,b)=>a-b);
+                    sortedPerArm[arm] = arr;
+                    if (arr.length) {
+                        const localMax = arr[arr.length-1];
+                        if (localMax > globalMaxVal) globalMaxVal = localMax;
+                    }
+                });
+
+                const lines = arms.map(arm=>{
+                    const color = orderToColor((lastData?.orders||{})[arm], palette);
+                    const arr = sortedPerArm[arm] || [];
+                    if (!arr.length) return '';
+                    const maxVal = Math.max(1, globalMaxVal);
+                    const pts = [];
+                    // 0..100% kvázi-quantile 101 pontból
+                    for (let p=0; p<=100; p++) {
+                        const idx = Math.floor((p/100)*(arr.length-1));
+                        const val = arr[idx];
+                        const x = margin.l + (p/100)*innerW;
+                        const y = margin.t + innerH - (val/maxVal)*innerH;
+                        pts.push(`${x},${y}`);
+                    }
+                    return `<polyline fill="none" stroke="${color}" stroke-width="2" points="${pts.join(' ')}"/>`;
+                }).join('');
+
+                const yTicks = [];
+                const yTicksDist = [];
+                const maxVal = Math.max(1, globalMaxVal);
+                const yStep = Math.max(1, Math.floor(maxVal/4));
+                for (let yv=0; yv<=maxVal; yv+=yStep){
+                    const y = margin.t + innerH - (yv/maxVal)*innerH;
+                    yTicksDist.push(`<line x1="${margin.l-4}" y1="${y}" x2="${margin.l}" y2="${y}" stroke="#2c3a4c" stroke-width="1"/>`);
+                    yTicksDist.push(`<text x="${margin.l-8}" y="${y+4}" font-size="11" fill="#7b8ba3" text-anchor="end">${formatNum(yv)}</text>`);
+                }
+
+                const xTicksDist = [0,25,50,75,100].map(p=>{
+                    const x = margin.l + (p/100)*innerW;
+                    return `<line x1="${x}" y1="${h-margin.b}" x2="${x}" y2="${h-margin.b+4}" stroke="#2c3a4c" stroke-width="1"/>
+                            <text x="${x}" y="${h-margin.b+14}" font-size="11" fill="#7b8ba3" text-anchor="middle">${p}%</text>`;
+                }).join('');
+
+                targetBox.innerHTML = `
+                    <svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" style="width:100%;height:100%;">
+                        <rect x="0" y="0" width="${w}" height="${h}" fill="#0f1620" stroke="#2c3a4c" />
+                        ${xTicksDist}
+                        <line x1="${margin.l}" y1="${h-margin.b}" x2="${w-margin.r}" y2="${h-margin.b}" stroke="#1f2a38" stroke-width="1"/>
+                        ${yTicksDist.join('')}
+                        ${lines}
+                        ${legend}
+                        <text x="${margin.l}" y="${margin.t}" font-size="12" fill="#7b8ba3">${title}</text>
+                    </svg>
+                `;
+            }
+
+        })();
+    </script>
+</body>
+</html>
