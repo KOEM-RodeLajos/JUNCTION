@@ -29,6 +29,7 @@
             grid-template-rows: var(--arm-length) var(--road-width) var(--arm-length);
             background-color: white;
             padding: 10px;
+            position: relative;
         }
 
         /* Cellák általános formázása */
@@ -79,6 +80,16 @@
             background: lightgrey;
         }
 
+        /* Sarok cellák a sorompó mezőknek */
+        .cell.corner {
+            background: white;
+            position: relative;
+        }
+        .cell.corner.tl { grid-column: 1; grid-row: 1; }
+        .cell.corner.tr { grid-column: 3; grid-row: 1; }
+        .cell.corner.br { grid-column: 3; grid-row: 3; }
+        .cell.corner.bl { grid-column: 1; grid-row: 3; }
+
         /* Közép (Nyilak) */
         .cell.center {
             grid-column: 2;
@@ -86,6 +97,31 @@
             position: relative; 
             background: lightgrey;
             border: none;
+        }
+
+        .axis-hitbox {
+            position: absolute;
+            border: none;
+            z-index: 4;
+        }
+        .axis-hitbox.ac {
+            left: 35%;
+            top: 0;
+            width: 30%;
+            height: 100%;
+        }
+        .axis-hitbox.bd {
+            left: 0;
+            top: 35%;
+            width: 100%;
+            height: 30%;
+        }
+        .axis-hitbox.both {
+            left: 35%;
+            top: 35%;
+            width: 30%;
+            height: 30%;
+            z-index: 6;
         }
 
         /* ---------------- INPUT MEZŐK ---------------- */
@@ -189,6 +225,10 @@
         input[type="checkbox"] {
             transform: scale(0.75); /* Kisebb checkbox */
             cursor: pointer;
+            opacity: 0;
+            width: 0;
+            height: 0;
+            pointer-events: none;
         }
 
         /* ---------------- KIS KORONGOK (TÁBLÁK) ---------------- */
@@ -214,6 +254,138 @@
         .sign-B { top: 8px; left: 8px; }        /* B (jobb kar): jobbra = észak */
         .sign-C { top: 8px; right: 8px; }       /* C (alsó kar): jobbra = kelet */
         .sign-D { bottom: 8px; right: 8px; }    /* D (bal kar): jobbra = dél */
+
+        /* ---------------- SOROMPÓK ---------------- */
+        .barrier {
+            position: absolute;
+            z-index: 2;
+            cursor: pointer;
+        }
+        .barrier .barrier-arm {
+            position: absolute;
+            background: #555;
+            border-radius: 2px;
+            box-shadow: 0 0 0 1px #333;
+        }
+        .barrier .barrier-post {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background: #666;
+            border-radius: 50%;
+            box-shadow: 0 0 0 1px #333;
+        }
+        .barrier.arm-hidden .barrier-arm {
+            display: none;
+        }
+        .barrier.open-short .barrier-arm { }
+        .barrier-A.open-short .barrier-arm,
+        .barrier-C.open-short .barrier-arm {
+            width: 12px;
+        }
+        .barrier-B.open-short .barrier-arm,
+        .barrier-D.open-short .barrier-arm {
+            height: 12px;
+        }
+        .barrier-C.open-short .barrier-arm {
+            left: auto;
+            right: 0;
+        }
+        .barrier-D.open-short .barrier-arm {
+            top: auto;
+            bottom: 0;
+        }
+        .barrier-A {
+            width: 52px;
+            height: 4px;
+            bottom: 2px;
+            left: 16%;
+            transform: translateX(-50%);
+        }
+        .barrier-A .barrier-arm {
+            width: 52px;
+            height: 4px;
+            left: 0;
+            top: 0;
+        }
+        .barrier-A .barrier-post {
+            left: -4px;
+            top: -2px;
+        }
+        .barrier-C {
+            width: 52px;
+            height: 4px;
+            top: 2px;
+            left: 84%;
+            transform: translateX(-50%);
+        }
+        .barrier-C .barrier-arm {
+            width: 52px;
+            height: 4px;
+            left: 0;
+            top: 0;
+        }
+        .barrier-C .barrier-post {
+            right: -4px;
+            top: -2px;
+        }
+        .barrier-B {
+            width: 4px;
+            height: 52px;
+            left: 2px;
+            top: 16%;
+            transform: translateY(-50%);
+        }
+        .barrier-B .barrier-arm {
+            width: 4px;
+            height: 52px;
+            left: 0;
+            top: 0;
+        }
+        .barrier-B .barrier-post {
+            left: -2px;
+            top: -4px;
+        }
+        .barrier-D {
+            width: 4px;
+            height: 52px;
+            right: 2px;
+            top: 84%;
+            transform: translateY(-50%);
+        }
+        .barrier-D .barrier-arm {
+            width: 4px;
+            height: 52px;
+            left: 0;
+            top: 0;
+        }
+        .barrier-D .barrier-post {
+            left: -2px;
+            bottom: -4px;
+        }
+
+        /* Sorompó melletti beviteli mezők */
+        .barrier-input {
+            position: static;
+            z-index: 4;
+        }
+        .barrier-input[type="time.number"] {
+            width: 12px !important;
+        }
+        .barrier-field {
+            position: absolute;
+            display: inline-flex;
+            align-items: center;
+            gap: 2px;
+        }
+        .barrier-unit {
+            font-size: 7px;
+            color: #000;
+        }
+        .corner.tl .barrier-field { right: 16px; bottom: 6px; }
+        .corner.tr .barrier-field { left: 16px; bottom: 6px; }
+        .corner.br .barrier-field { left: 16px; top: 6px; }
+        .corner.bl .barrier-field { right: 16px; top: 6px; }
 
         /* ---------------- INAKTÍV (order 0) ÁG STÍLUS ---------------- */
         .cell.inactive {
@@ -244,41 +416,61 @@
 <body>
 
     <div class="container">
+        <div class="cell corner tl">
+            <div class="barrier-field">
+                <input class="barrier-input barrier-input-A" type="time.number">
+                <span class="barrier-unit">s</span>
+            </div>
+        </div>
+        <div class="cell corner tr">
+            <div class="barrier-field">
+                <input class="barrier-input barrier-input-B" type="time.number">
+                <span class="barrier-unit">s</span>
+            </div>
+        </div>
         
         <div class="cell top">
-            <input type="number" class="priority-number pos-A" value="1">
+            <input type="number" class="priority-number pos-A">
             
             <div class="check-wrapper check-AC">
-                <input id="toggle-vertical" type="checkbox" title="AC tengely" checked>
+                <input id="toggle-vertical" type="checkbox" title="AC tengely">
             </div>
 
             <div class="sign sign-A"></div>
+            <div class="barrier barrier-A">
+                <div class="barrier-arm"></div>
+                <div class="barrier-post"></div>
+            </div>
 
             <div class="data-group">
-                <input type="vehicle.number" value="0">
+                <input type="vehicle.number">
                 <div class="label">Jármű/h</div>
             </div>
             <div class="data-group">
-                <input type="time.number" value="4,2">
+                <input type="time.number">
                 <div class="label">s/áthajtás</div>
             </div>
         </div>
 
         <div class="cell left">
-            <input type="number" class="priority-number pos-D" value="0">
+            <input type="number" class="priority-number pos-D">
 
             <div class="check-wrapper check-BD">
-                <input id="toggle-horizontal" type="checkbox" title="BD tengely" checked>
+                <input id="toggle-horizontal" type="checkbox" title="BD tengely">
             </div>
 
             <div class="sign sign-D"></div>
+            <div class="barrier barrier-D">
+                <div class="barrier-arm"></div>
+                <div class="barrier-post"></div>
+            </div>
 
             <div class="data-group">
-                <input type="vehicle.number" value="0">
+                <input type="vehicle.number">
                 <div class="label">Jármű/h</div>
             </div>
             <div class="data-group">
-                <input type="time.number" value="4,2">
+                <input type="time.number">
                 <div class="label">s/áthajtás</div>
             </div>
         </div>
@@ -293,35 +485,59 @@
                 </defs>
 
                 <polygon points="180,65 60,65 60,45 20,75 60,105 60,85 180,85" class="arrow-path arrow-horizontal" opacity="0.9"/>  <polygon points="20,135 140,135 140,155 180,125 140,95 140,115 20,115" class="arrow-path arrow-horizontal" opacity="0.9"/>  <polygon points="65,20 65,140 45,140 75,180 105,140 85,140 85,20" class="arrow-path arrow-vertical" opacity="0.9"/>  <polygon points="135,180 135,60 155,60 125,20 95,60 115,60 115,180" class="arrow-path arrow-vertical" opacity="0.9"/>  </svg>
+            <div class="axis-hitbox ac" title="AC tengely"></div>
+            <div class="axis-hitbox bd" title="BD tengely"></div>
+            <div class="axis-hitbox both" title="AC + BD tengely"></div>
         </div>
 
         <div class="cell right">
-            <input type="number" class="priority-number pos-B" value="2">
+            <input type="number" class="priority-number pos-B">
 
             <div class="sign sign-B"></div>
+            <div class="barrier barrier-B">
+                <div class="barrier-arm"></div>
+                <div class="barrier-post"></div>
+            </div>
 
             <div class="data-group">
-                <input type="vehicle.number" value="200">
+                <input type="vehicle.number">
                 <div class="label">Jármű/h</div>
             </div>
             <div class="data-group">
-                <input type="time.number" value="4,2">
+                <input type="time.number">
                 <div class="label">s/áthajtás</div>
             </div>
         </div>
 
         <div class="cell bottom">
-            <input type="number" class="priority-number pos-C" value="3">
+            <input type="number" class="priority-number pos-C">
 
             <div class="sign sign-C"></div>
+            <div class="barrier barrier-C">
+                <div class="barrier-arm"></div>
+                <div class="barrier-post"></div>
+            </div>
 
             <div class="data-group">
-                <input type="vehicle.number" value="200">
+                <input type="vehicle.number">
                 <div class="label">Jármű/h</div>
             </div>
             <div class="data-group">
-                <input type="time.number" value="4,2">
+                <input type="time.number">
                 <div class="label">s/áthajtás</div>
+            </div>
+        </div>
+
+        <div class="cell corner bl">
+            <div class="barrier-field">
+                <input class="barrier-input barrier-input-D" type="time.number">
+                <span class="barrier-unit">s</span>
+            </div>
+        </div>
+        <div class="cell corner br">
+            <div class="barrier-field">
+                <input class="barrier-input barrier-input-C" type="time.number">
+                <span class="barrier-unit">s</span>
             </div>
         </div>
 
@@ -331,6 +547,9 @@
         // Toggle arrow visibility based on the two tengely (axis) checkbox states.
         const toggleHorizontal = document.getElementById('toggle-horizontal');
         const toggleVertical = document.getElementById('toggle-vertical');
+        const hitboxAC = document.querySelector('.axis-hitbox.ac');
+        const hitboxBD = document.querySelector('.axis-hitbox.bd');
+        const hitboxBoth = document.querySelector('.axis-hitbox.both');
         const horizontalArrows = document.querySelectorAll('.arrow-horizontal');
         const verticalArrows = document.querySelectorAll('.arrow-vertical');
 
@@ -343,6 +562,27 @@
             });
             verticalArrows.forEach(el => {
                 el.style.display = acAxis ? 'inline' : 'none';
+            });
+        }
+
+        if (hitboxAC) {
+            hitboxAC.addEventListener('click', () => {
+                toggleVertical.checked = !toggleVertical.checked;
+                refreshArrows(latestOrder);
+            });
+        }
+        if (hitboxBD) {
+            hitboxBD.addEventListener('click', () => {
+                toggleHorizontal.checked = !toggleHorizontal.checked;
+                refreshArrows(latestOrder);
+            });
+        }
+        if (hitboxBoth) {
+            hitboxBoth.addEventListener('click', (e) => {
+                toggleVertical.checked = !toggleVertical.checked;
+                toggleHorizontal.checked = !toggleHorizontal.checked;
+                refreshArrows(latestOrder);
+                e.stopPropagation();
             });
         }
 
@@ -360,6 +600,42 @@
             C: document.querySelector('.cell.bottom input[type="vehicle.number"]'),
             D: document.querySelector('.cell.left input[type="vehicle.number"]'),
         };
+        const barrierTimeInputs = {
+            A: document.querySelector('.barrier-input-A'),
+            B: document.querySelector('.barrier-input-B'),
+            C: document.querySelector('.barrier-input-C'),
+            D: document.querySelector('.barrier-input-D'),
+        };
+
+        function refreshBarrierLengths() {
+            ['A', 'B', 'C', 'D'].forEach(arm => {
+                const input = barrierTimeInputs[arm];
+                const barrier = document.querySelector(`.barrier-${arm}`);
+                if (!input || !barrier) return;
+                const t = parseNumber(input.value) ?? 0;
+                if (t <= 0) {
+                    barrier.classList.add('open-short');
+                } else {
+                    barrier.classList.remove('open-short');
+                }
+            });
+        }
+
+        // -------- SOROMPÓK: kattintásra kar ki/be ----------
+        document.querySelectorAll('.barrier').forEach(el => {
+            const arm = ['A','B','C','D'].find(a => el.classList.contains(`barrier-${a}`));
+            if (!arm) return;
+            el.addEventListener('click', () => {
+                setBarrierState(arm, !barrierState[arm]);
+                updateBarrierVisibility(arm, latestOrder?.[arm] ?? 0);
+            });
+        });
+
+        Object.values(barrierTimeInputs).forEach(inp => {
+            if (!inp) return;
+            inp.addEventListener('input', refreshBarrierLengths);
+            inp.addEventListener('change', refreshBarrierLengths);
+        });
 
         const passInputs = {
             A: document.querySelector('.cell.top input[type="time.number"]'),
@@ -367,6 +643,54 @@
             C: document.querySelector('.cell.bottom input[type="time.number"]'),
             D: document.querySelector('.cell.left input[type="time.number"]'),
         };
+
+        const DEFAULTS = {
+            priority: { A: 1, B: 2, C: 3, D: 0 },
+            vehicles: { A: 0, B: 200, C: 300, D: 0 },
+            passTime: { A: '4,2', B: '4,2', C: '4,2', D: '4,2' },
+            barrierTime: { A: '6', B: '6', C: '6', D: '6' },
+            axes: { AC: true, BD: true },
+            barrierEnabled: { A: false, B: false, C: false, D: false }
+        };
+
+        const barrierState = { A: true, B: true, C: true, D: true };
+
+        function setBarrierState(arm, enabled) {
+            barrierState[arm] = !!enabled;
+            const barrier = document.querySelector(`.barrier-${arm}`);
+            const field = document.querySelector(`.barrier-input-${arm}`)?.closest('.barrier-field');
+            if (barrier) {
+                barrier.classList.toggle('arm-hidden', !barrierState[arm]);
+            }
+            if (field) {
+                field.style.display = barrierState[arm] ? '' : 'none';
+            }
+        }
+
+        function updateBarrierVisibility(arm, ord) {
+            const barrier = document.querySelector(`.barrier-${arm}`);
+            const field = document.querySelector(`.barrier-input-${arm}`)?.closest('.barrier-field');
+            const armActive = ord !== 0;
+            if (barrier) {
+                barrier.style.display = armActive ? '' : 'none';
+                barrier.classList.toggle('arm-hidden', !barrierState[arm]);
+            }
+            if (field) {
+                field.style.display = armActive && barrierState[arm] ? '' : 'none';
+            }
+        }
+
+        function applyDefaults() {
+            ['A', 'B', 'C', 'D'].forEach(arm => {
+                if (priorityInputs[arm]) priorityInputs[arm].value = DEFAULTS.priority[arm];
+                if (vehInputs[arm]) vehInputs[arm].value = DEFAULTS.vehicles[arm];
+                if (passInputs[arm]) passInputs[arm].value = DEFAULTS.passTime[arm];
+                if (barrierTimeInputs[arm]) barrierTimeInputs[arm].value = DEFAULTS.barrierTime[arm];
+                setBarrierState(arm, DEFAULTS.barrierEnabled[arm]);
+            });
+            if (toggleVertical) toggleVertical.checked = !!DEFAULTS.axes.AC;
+            if (toggleHorizontal) toggleHorizontal.checked = !!DEFAULTS.axes.BD;
+        }
 
         const signElements = {
             A: document.querySelector('.sign-A'),
@@ -504,7 +828,12 @@
                     } else {
                         cell.classList.remove('inactive');
                     }
+                    cell.querySelectorAll('.data-group').forEach(group => {
+                        group.style.display = ord === 0 ? 'none' : '';
+                    });
                 }
+
+                updateBarrierVisibility(arm, ord);
 
                 if (centerCell && ord === 0) {
                     centerCell.classList.add(`border-${arm}`);
@@ -521,8 +850,10 @@
             inp.addEventListener('change', computeOrders);
         });
 
+        applyDefaults();
         refreshArrows(latestOrder);
         computeOrders();
+        refreshBarrierLengths();
 
         // Adatkiolvasás a szülő számára
         window.getCrossData = function getCrossData() {
@@ -546,6 +877,13 @@
                 C: parseNumber(passInputs.C?.value),
                 D: parseNumber(passInputs.D?.value),
             };
+            const barrierTimes = {
+                A: barrierState.A ? (parseNumber(barrierTimeInputs.A?.value) ?? 0) : 0,
+                B: barrierState.B ? (parseNumber(barrierTimeInputs.B?.value) ?? 0) : 0,
+                C: barrierState.C ? (parseNumber(barrierTimeInputs.C?.value) ?? 0) : 0,
+                D: barrierState.D ? (parseNumber(barrierTimeInputs.D?.value) ?? 0) : 0,
+            };
+            const barriers = { ...barrierState };
 
             const axes = {
                 AC_checked: !!toggleVertical.checked,
@@ -559,6 +897,8 @@
                 orders: { ...latestOrder },
                 vehicles,
                 passTimes,
+                barrierTimes,
+                barriers,
                 axes,
             };
         };

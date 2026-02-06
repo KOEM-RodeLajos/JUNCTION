@@ -11,6 +11,7 @@
             --line: #98a9c1;
             --text: #103151;
             --muted: #5f6b7a;
+            --table-fade: #2d2d2d;
             --blue: #3a7bd5;
             --blue-dark: #0c2d57;
             --shadow: 0 4px 10px rgba(31, 41, 51, 0.06);
@@ -177,7 +178,7 @@
         /* Bal oldali (diagram) hasáb */
         .charts {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
+            grid-template-columns: 4fr 4fr 4fr 3fr; /* utolsó oszlop = táblázat 1fr arány */
             grid-auto-rows: auto;
             gap: 8px;
             width: 100%;
@@ -199,6 +200,9 @@
         .chart-placeholder.small {
             height: 120px;
         }
+        .chart-card.small-card {
+            height: 100%;
+        }
 
         .chart-wide {
             grid-column: 1 / -1;
@@ -209,6 +213,10 @@
             grid-template-columns: 2fr 2fr 1fr; /* 40-40-20 */
             gap: 8px;
             align-items: stretch;
+            align-content: start;
+        }
+        .chart-card.full-span {
+            grid-column: 1 / -1;
         }
 
         /* Sötét panel a renderChart alapú diagramokhoz */
@@ -254,6 +262,33 @@
             flex-direction: column;
             aspect-ratio: var(--table-aspect-value);
         }
+        .drop-wrap {
+            display: flex;
+            align-items: stretch;
+            justify-content: space-between;
+            gap: 10px;
+            height: 100%;
+        }
+        .drop-metrics {
+            flex: 1;
+        }
+        .drop-indicator {
+            width: 32px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            font-weight: 700;
+            color: #0f1620;
+        }
+        .drop-ok { background: #2ecc71; }
+        .drop-warn { background: #f1c40f; }
+        .drop-bad { background: #e74c3c; }
+        .chart-card.small-card .table-body {
+            aspect-ratio: auto;
+            height: calc(100% - 32px);
+        }
         .chart-card .table-body .result-table {
             width: 100%;
             height: 100%;
@@ -297,6 +332,9 @@
             background: #eef2f7;
             font-weight: 700;
             color: #2f65ad;
+        }
+        .result-table .inactive-row {
+            color: var(--table-fade);
         }
 
         @media (max-width: 960px) {
@@ -355,6 +393,14 @@
             <div class="chart-placeholder small"></div>
             <div class="chart-placeholder small"></div>
             <div class="chart-placeholder small"></div>
+            <div class="chart-placeholder small">
+                <div class="chart-card small-card">
+                    <h3 class="chart-title">Eldobott járművek</h3>
+                    <div class="chart-body table-body" id="drop-table-card">
+                        <div style="font-size:12px;color:#5f6b7a;">átlagosan 0,00 db/ciklus</div>
+                    </div>
+                </div>
+            </div>
             <div class="chart-placeholder chart-wide charts-stack">
                 <div class="chart-card">
                     <h3 class="chart-title" id="chart6title">Találkozások [jmű(t)]</h3>
@@ -369,7 +415,7 @@
                     </div>
                 </div>
                 <div class="chart-card">
-                    <h3 class="chart-title" id="chart7title">Találkozások eloszlás [jmű(t%)]</h3>
+                    <h3 class="chart-title" id="chart7title">Találkozások eloszlása [jmű(t%)]</h3>
                     <div class="chart-body">
                         <svg id="chart7svg" viewBox="0 0 1000 667" preserveAspectRatio="xMinYMin meet" style="width:100%; height:100%;">
                             <g data-role="axis"></g>
@@ -389,7 +435,7 @@
             </div>
             <div class="chart-placeholder chart-wide charts-stack">
                 <div class="chart-card">
-                    <h3 class="chart-title" id="chart8title">Sorrafutások [jmű(t)]</h3>
+                    <h3 class="chart-title" id="chart8title">Sorra futások [jmű(t)]</h3>
                     <div class="chart-body">
                         <svg id="chart8svg" viewBox="0 0 1000 667" preserveAspectRatio="xMinYMin meet" style="width:100%; height:100%;">
                             <g data-role="axis"></g>
@@ -401,7 +447,7 @@
                     </div>
                 </div>
                 <div class="chart-card">
-                    <h3 class="chart-title" id="chart9title">Sorrafutások eloszlás [jmű(t%)]</h3>
+                    <h3 class="chart-title" id="chart9title">Sorra futások eloszlása [jmű(t%)]</h3>
                     <div class="chart-body">
                         <svg id="chart9svg" viewBox="0 0 1000 667" preserveAspectRatio="xMinYMin meet" style="width:100%; height:100%;">
                             <g data-role="axis"></g>
@@ -413,9 +459,9 @@
                     </div>
                 </div>
                 <div class="chart-card">
-                    <h3 class="chart-title">Sorrafutás [jmű/h]</h3>
+                    <h3 class="chart-title">Sorra futás [jmű/h]</h3>
                     <div class="chart-body table-body" id="queuehit-table-card">
-                        <div class="table-placeholder">Sorrafutások táblázat helye</div>
+                        <div class="table-placeholder">Sorra futások táblázat helye</div>
                     </div>
                 </div>
             </div>
@@ -459,8 +505,8 @@
             const CHART_TITLE_QUEUE = 'Sorképződés [jmű(t)]';
             const CHART_TITLE_DIST = 'Soreloszlás [jmű(t%)]';
             const iframe = document.querySelector('.cross-frame');
-            const CHART_TITLE_HIT = 'Sorrafutások [jmű(t)]';
-            const CHART_TITLE_HIT_DIST = 'Sorrafutások eloszlás [jmű(t%)]';
+            const CHART_TITLE_HIT = 'Sorra futások [jmű(t)]';
+            const CHART_TITLE_HIT_DIST = 'Sorra futások eloszlása [jmű(t%)]';
             const runBtn = document.querySelector('.run-btn');
             const resolutionInput = document.getElementById('resolution');
             const followInput = document.getElementById('follow-time');
@@ -472,6 +518,7 @@
             const queueTableCard = document.getElementById('queue-table-card');
             const meetTableCard = document.getElementById('meet-table-card');
             const queueHitTableCard = document.getElementById('queuehit-table-card');
+            const dropTableCard = document.getElementById('drop-table-card');
             const cyclesInput = document.getElementById('cycles');
             const titleEl4 = document.getElementById('chart4title');
             const titleEl5 = document.getElementById('chart5title');
@@ -570,7 +617,19 @@
             renderEmptySmallChart(chartBox3, 200);
             renderEmptyTable(meetTableCard, ['Kar','Min.','Átlag','95%','98%','Max.'], ['A','B','C','D'], 'Σ');
             renderEmptyTable(queueHitTableCard, ['Kar','Min.','Átlag','95%','98%','Max.'], ['A','B','C','D'], 'Σ');
-            renderEmptyTable(queueTableCard, ['Kar','50%','Átlag','95%','98%','99%'], ['A','B','C','D'], 'ÁTL');
+            renderEmptyTable(queueTableCard, ['Kar','50%','Átlag','95%','98%','99%'], ['A','B','C','D'], 'MAX');
+            if (dropTableCard) {
+                dropTableCard.innerHTML = `
+                    <div class="drop-wrap">
+                        <div class="drop-metrics" style="font-size:12px;color:#5f6b7a;">
+                            <div>átlagosan <strong>0,00</strong> db/ciklus</div>
+                            <div>össz arány: <strong>0,00%</strong></div>
+                            <div>kritikus arány: <strong>0,00%</strong></div>
+                        </div>
+                        <div class="drop-indicator drop-ok">✓</div>
+                    </div>
+                `;
+            }
 
             iframe?.addEventListener('load', () => {
                 crossReady = true;
@@ -681,7 +740,7 @@ function renderChart({
   }
 }
 
-            function renderResults(data) {
+            async function renderResults(data) {
                 if (!meetTableCard || !queueHitTableCard) return;
                 const { priorities, orders, vehicles, passTimes, axes } = data || {};
                 const arms = ['A', 'B', 'C', 'D'];
@@ -702,15 +761,39 @@ function renderChart({
                 const queueSums = {A:0,B:0,C:0,D:0};
                 const queueSamples = {A:[],B:[],C:[],D:[]};
                 const meetSamples = {A:[],B:[],C:[],D:[]}; // találkozás/ciklus
-                const queueHitSamples = {A:[],B:[],C:[],D:[]}; // sorrafutás/ciklus
+                const queueHitSamples = {A:[],B:[],C:[],D:[]}; // sorra futás/ciklus
                 const queueSumPerSec = {A:Array(3600).fill(0),B:Array(3600).fill(0),C:Array(3600).fill(0),D:Array(3600).fill(0)};
                 const meetSumPerSec = {A:Array(3600).fill(0),B:Array(3600).fill(0),C:Array(3600).fill(0),D:Array(3600).fill(0)};
                 const queueHitSumPerSec = {A:Array(3600).fill(0),B:Array(3600).fill(0),C:Array(3600).fill(0),D:Array(3600).fill(0)};
+                const droppedSum = {A:0,B:0,C:0,D:0};
                 let lastSim = null;
+                const sampleEvery = Math.max(1, Math.floor(cycles / 50));
+                if (dropTableCard) {
+                    dropTableCard.innerHTML = `
+                        <div class="drop-wrap">
+                            <div class="drop-metrics" style="font-size:12px;color:#5f6b7a;">
+                                <div>átlagosan <strong>…</strong> db/ciklus</div>
+                                <div>össz arány: <strong>…%</strong></div>
+                                <div>kritikus arány: <strong>…%</strong></div>
+                            </div>
+                        </div>
+                    `;
+                }
                 for (let c=0; c<cycles; c++) {
                     const sim = simulateTraffic({ data, res, isecPerHour, palette });
                     if (c === cycles-1) lastSim = sim; // utolsó lefutás diagramokhoz
                     if (!sim) continue;
+                    if (c % sampleEvery === 0) {
+                        renderChartArrivals(sim, palette, isecPerHour);
+                        renderChartMeets(sim, isecPerHour);
+                        renderChartQueues(sim, palette, isecPerHour);
+                        await new Promise(requestAnimationFrame);
+                    }
+                    if (sim.droppedByArm) {
+                        arms.forEach(a => {
+                            droppedSum[a] += sim.droppedByArm[a] || 0;
+                        });
+                    }
                     const { timetable } = sim;
                     const meetPerArmThisCycle = {A:0,B:0,C:0,D:0};
                     const queueHitPerArmThisCycle = {A:0,B:0,C:0,D:0};
@@ -778,14 +861,17 @@ function renderChart({
                 });
 
                 const f1 = (v)=> v===Infinity ? '0,0' : Number(v).toFixed(1).replace('.',',');
+                const f0 = (v)=> v===Infinity ? '0' : String(Math.round(Number(v)));
+                const inactiveArms = new Set(arms.filter(a => (orders?.[a] || 0) === 0 || (vehicles?.[a] || 0) === 0));
+                const rowClassFor = (a) => inactiveArms.has(a) ? ' class="inactive-row"' : '';
                 const rowsSummary = arms.map(a => `
-                    <tr>
+                    <tr${rowClassFor(a)}>
                         <td>${a}</td>
-                        <td>${f1(meetMin[a])}</td>
+                        <td>${f0(meetMin[a])}</td>
                         <td>${f1(meetAvg[a])}</td>
-                        <td>${f1(meetP95[a])}</td>
-                        <td>${f1(meetP98[a])}</td>
-                        <td>${f1(meetMax[a])}</td>
+                        <td>${f0(meetP95[a])}</td>
+                        <td>${f0(meetP98[a])}</td>
+                        <td>${f0(meetMax[a])}</td>
                     </tr>
                 `).join('');
                 const sumRow = (() => {
@@ -797,11 +883,11 @@ function renderChart({
                     return `
                         <tr class="summary-row">
                               <td>&Sigma;</td>
-                              <td>${f1(sumMin)}</td>
+                              <td>${f0(sumMin)}</td>
                               <td>${f1(sumAvg)}</td>
-                            <td>${f1(sumP95)}</td>
-                            <td>${f1(sumP98)}</td>
-                            <td>${f1(sumMax)}</td>
+                            <td>${f0(sumP95)}</td>
+                            <td>${f0(sumP98)}</td>
+                            <td>${f0(sumMax)}</td>
                         </tr>
                     `;
                 })();
@@ -822,30 +908,30 @@ function renderChart({
                 const rowsQueue = arms.map(a => {
                     const avgQ = queueSums[a] / (isecPerHour * cycles);
                     return `
-                        <tr>
+                        <tr${rowClassFor(a)}>
                             <td>${a}</td>
-                            <td>${f1(queueP50[a])}</td>
+                            <td>${f0(queueP50[a])}</td>
                             <td>${f1(avgQ)}</td>
-                            <td>${f1(queueP95[a])}</td>
-                            <td>${f1(queueP98[a])}</td>
-                            <td>${f1(queueP99[a])}</td>
+                            <td>${f0(queueP95[a])}</td>
+                            <td>${f0(queueP98[a])}</td>
+                            <td>${f0(queueP99[a])}</td>
                         </tr>
                     `;
                 }).join('');
-                const avgRowQ = (() => {
-                    const avg50 = arms.reduce((s,a)=> s + queueP50[a], 0) / arms.length;
-                    const avgAvg = arms.reduce((s,a)=> s + (queueSums[a] / (isecPerHour * cycles)), 0) / arms.length;
-                    const avg95 = arms.reduce((s,a)=> s + queueP95[a], 0) / arms.length;
-                    const avg98 = arms.reduce((s,a)=> s + queueP98[a], 0) / arms.length;
-                    const avg99 = arms.reduce((s,a)=> s + queueP99[a], 0) / arms.length;
+                const maxRowQ = (() => {
+                    const max50 = Math.max(...arms.map(a => queueP50[a]));
+                    const maxAvg = Math.max(...arms.map(a => queueSums[a] / (isecPerHour * cycles)));
+                    const max95 = Math.max(...arms.map(a => queueP95[a]));
+                    const max98 = Math.max(...arms.map(a => queueP98[a]));
+                    const max99 = Math.max(...arms.map(a => queueP99[a]));
                     return `
                         <tr class="summary-row">
-                            <td>ÁTL</td>
-                            <td>${f1(avg50)}</td>
-                            <td>${f1(avgAvg)}</td>
-                            <td>${f1(avg95)}</td>
-                            <td>${f1(avg98)}</td>
-                            <td>${f1(avg99)}</td>
+                            <td>MAX</td>
+                            <td>${f0(max50)}</td>
+                            <td>${f1(maxAvg)}</td>
+                            <td>${f0(max95)}</td>
+                            <td>${f0(max98)}</td>
+                            <td>${f0(max99)}</td>
                         </tr>
                     `;
                 })();
@@ -856,7 +942,7 @@ function renderChart({
                         </thead>
                         <tbody>
                             ${rowsQueue}
-                            ${avgRowQ}
+                            ${maxRowQ}
                         </tbody>
                     </table>
                 `;
@@ -864,16 +950,45 @@ function renderChart({
                 if (queueTableCard) {
                     queueTableCard.innerHTML = tableQueue;
                 }
+                if (dropTableCard) {
+                    const avgDropped = arms.reduce((s,a)=> s + (droppedSum[a] / cycles), 0);
+                    const totalVeh = arms.reduce((s,a)=> s + (vehicles?.[a] || 0), 0);
+                    const activeVeh = arms
+                        .filter(a => (orders?.[a] || 0) > 0 && (vehicles?.[a] || 0) > 0)
+                        .map(a => vehicles?.[a] || 0);
+                    const minNonZero = activeVeh.length ? Math.min(...activeVeh) : 0;
+                    const pctTotal = totalVeh > 0 ? (avgDropped / totalVeh) * 100 : 0;
+                    const pctCritical = minNonZero > 0 ? (avgDropped / minNonZero) * 100 : 0;
+                    let indicatorClass = 'drop-ok';
+                    let indicatorSymbol = '✓';
+                    if (pctTotal > 2 || pctCritical > 5) {
+                        indicatorClass = 'drop-bad';
+                        indicatorSymbol = '!';
+                    } else if (pctTotal > 0.5 || pctCritical > 2) {
+                        indicatorClass = 'drop-warn';
+                        indicatorSymbol = '?';
+                    }
+                    dropTableCard.innerHTML = `
+                        <div class="drop-wrap">
+                            <div class="drop-metrics" style="font-size:12px;color:#5f6b7a;">
+                                <div>átlagosan <strong>${Number(avgDropped).toFixed(2).replace('.',',')}</strong> db/ciklus</div>
+                                <div>össz arány: <strong>${Number(pctTotal).toFixed(2).replace('.',',')}%</strong></div>
+                                <div>kritikus arány: <strong>${Number(pctCritical).toFixed(2).replace('.',',')}%</strong></div>
+                            </div>
+                            <div class="drop-indicator ${indicatorClass}">${indicatorSymbol}</div>
+                        </div>
+                    `;
+                }
 
-                // Sorrafutás táblázat (queueHit) -> Eredménytábla 1 alá
+                // Sorra futás táblázat (queueHit) -> Eredménytábla 1 alá
                 const rowsQueueHit = arms.map(a => `
-                    <tr>
+                    <tr${rowClassFor(a)}>
                         <td>${a}</td>
-                        <td>${f1(queueHitMin[a]===Infinity?0:queueHitMin[a])}</td>
+                        <td>${f0(queueHitMin[a]===Infinity?0:queueHitMin[a])}</td>
                         <td>${f1(queueHitAvg[a])}</td>
-                        <td>${f1(queueHitP95[a])}</td>
-                        <td>${f1(queueHitP98[a])}</td>
-                        <td>${f1(queueHitMax[a])}</td>
+                        <td>${f0(queueHitP95[a])}</td>
+                        <td>${f0(queueHitP98[a])}</td>
+                        <td>${f0(queueHitMax[a])}</td>
                     </tr>
                 `).join('');
                 const sumRowQH = (() => {
@@ -885,11 +1000,11 @@ function renderChart({
                       return `
                           <tr class="summary-row">
                               <td>&Sigma;</td>
-                              <td>${f1(sMin)}</td>
+                              <td>${f0(sMin)}</td>
                               <td>${f1(sAvg)}</td>
-                            <td>${f1(s95)}</td>
-                            <td>${f1(s98)}</td>
-                            <td>${f1(sMax)}</td>
+                            <td>${f0(s95)}</td>
+                            <td>${f0(s98)}</td>
+                            <td>${f0(sMax)}</td>
                         </tr>
                     `;
                 })();
@@ -1072,7 +1187,7 @@ function renderChart({
                     }
                 });
 
-                // új 8. diagram: sorrafutások időben (átlag/sec)
+                // új 8. diagram: sorra futások időben (átlag/sec)
                 let maxHitSeen = 0;
                 const seriesHit = activeArms.map(a => {
                     const pts = [];
@@ -1106,7 +1221,7 @@ function renderChart({
                     }
                 });
 
-                // új 9. diagram: sorrafutások eloszlása
+                // új 9. diagram: sorra futások eloszlása
                 let hitMaxDist = 1;
                 const sortedHit = {};
                 activeArms.forEach(a => {
@@ -1178,6 +1293,7 @@ function renderChart({
                 const kIsec = kSec * res;
 
                 const perArmTimes = {};
+                const droppedByArm = { A:0, B:0, C:0, D:0 };
 
                 arms.forEach(arm => {
                     const ord = orders?.[arm] || 0;
@@ -1201,7 +1317,12 @@ function renderChart({
                             if (t - last >= kIsec) {
                                 spaced.push(t);
                             } else {
-                                spaced.push(last + kIsec);
+                                const candidate = last + kIsec;
+                                if (candidate > isecPerHour - 1) {
+                                    droppedByArm[arm] += 1;
+                                } else {
+                                    spaced.push(candidate);
+                                }
                             }
                         }
                     });
@@ -1235,7 +1356,7 @@ function renderChart({
                         });
                     }
 
-                    // érkezések kezelése: sorrafutás elsőbbség, különben meet
+                    // érkezések kezelése: sorra futás elsőbbség, különben meet
                     arms.forEach(a => {
                         if ((current[a].arrivals || 0) > 0) {
                             const arrivesNow = current[a].arrivals;
@@ -1249,7 +1370,7 @@ function renderChart({
                                 if (axisActive && b === opposite) return false;
                                 return current[b].inCross;
                             });
-                            // sorrafutás prioritás: ha már volt sor, queueHit, különben meet
+                            // sorra futás prioritás: ha már volt sor, queueHit, különben meet
                             if (prev && (prev[a].queue > 0)) {
                                 current[a].queueHit = true;
                                 current[a].meet = false;
@@ -1279,7 +1400,7 @@ function renderChart({
                         const anyIn = arms.some(b => current[b].inCross);
                         const onlyOpposite = arms.every(b => {
                             if (!current[b].inCross) return true;
-                            return b === a || (axisActive && b === opposite);
+                            return axisActive && b === opposite;
                         });
                         const canGo = !anyIn || (axisActive && onlyOpposite);
                         if (!canGo) return;
@@ -1289,25 +1410,27 @@ function renderChart({
 
                         // áthajtási idő isec-ben
                         const passSec = passTimes?.[a] || 0;
-                        const dur = Math.max(1, Math.round(passSec * res));
-                        for (let dt = 0; dt < dur; dt++) {
-                            const idx = t + dt;
-                            if (idx >= isecPerHour) break;
-                            timetable[idx][a].inCross = true;
+                        const dur = Math.round(passSec * res);
+                        if (dur > 0) {
+                            for (let dt = 0; dt < dur; dt++) {
+                                const idx = t + dt;
+                                if (idx >= isecPerHour) break;
+                                timetable[idx][a].inCross = true;
+                            }
                         }
                     });
                 }
 
-                return { perArmTimes, timetable };
+                return { perArmTimes, timetable, droppedByArm };
             }
 
-            function renderChartArrivals(sim, palette, isecPerHour) {
+            function renderChartArrivals(sims, palette, isecPerHour) {
                 if (!chartBox1) return;
-                if (!sim) {
+                if (!sims || (Array.isArray(sims) && sims.length === 0)) {
                     chartBox1.textContent = 'Nincs adat a diagramhoz.';
                     return;
                 }
-                const { perArmTimes } = sim;
+                const simList = Array.isArray(sims) ? sims : [sims];
                 const arms = ['A','B','C','D'];
                 const w = 1000; // virtual width
                 const h = 180;
@@ -1319,15 +1442,18 @@ function renderChart({
                 const yPos = { A: 30, B: 70, C: 110, D: 150 };
 
                 const circles = [];
-                arms.forEach(arm => {
-                    const times = perArmTimes[arm];
-                    if (!times || !times.length) return;
-                    const color = orderToColor((lastData?.orders || {})[arm], palette);
-                    times.forEach(t => {
-                        const sec = t / res;
-                        const x = margin.l + Math.min(innerW, Math.max(0, sec * band));
-                        const y = yPos[arm] || 30;
-                        circles.push(`<circle cx="${x}" cy="${y}" r="4" fill="${color}" fill-opacity="0.8" />`);
+                simList.forEach(sim => {
+                    const perArmTimes = sim.perArmTimes || {};
+                    arms.forEach(arm => {
+                        const times = perArmTimes[arm];
+                        if (!times || !times.length) return;
+                        const color = orderToColor((lastData?.orders || {})[arm], palette);
+                        times.forEach(t => {
+                            const sec = t / res;
+                            const x = margin.l + Math.min(innerW, Math.max(0, sec * band));
+                            const y = yPos[arm] || 30;
+                            circles.push(`<circle cx="${x}" cy="${y}" r="4" fill="${color}" fill-opacity="0.25" />`);
+                        });
                     });
                 });
 
@@ -1364,30 +1490,36 @@ function renderChart({
                 `;
             }
 
-            function renderChartMeets(sim, isecPerHour) {
+            function renderChartMeets(sims, isecPerHour) {
                 if (!chartBox2) return;
-                if (!sim) {
+                if (!sims || (Array.isArray(sims) && sims.length === 0)) {
                     chartBox2.textContent = 'Nincs adat a diagramhoz.';
                     return;
                 }
-                const { timetable } = sim;
+                const simList = Array.isArray(sims) ? sims : [sims];
                 const w = 1000, h = 180;
                 const margin = { l: 55, r: 10, t: 20, b: 24 };
                 const innerW = w - margin.l - margin.r;
                 const band = innerW / 3600;
                 const res = getResolution();
-                const series = [];
-                for (let t=0; t<isecPerHour; t++) {
-                    const meets = ['A','B','C','D'].filter(a => timetable[t][a]?.meet).length;
-                    series.push({ t, meets });
-                }
-                const maxY = Math.max(1, ...series.map(s=>s.meets));
-                const points = series.map(s=>{
-                    const sec = s.t / res;
-                    const x = margin.l + Math.min(innerW, Math.max(0, sec*band));
-                    const y = h - margin.b - (s.meets / maxY) * (h - margin.t - margin.b);
-                    return `${x},${y}`;
-                }).join(' ');
+                const arms = ['A','B','C','D'];
+                const maxY = 1;
+                const paletteMap = buildPalette(Object.values(lastData?.orders||{}));
+                const polylines = simList.map(sim => {
+                    const timetable = sim.timetable || [];
+                    return arms.map(a => {
+                        const color = orderToColor((lastData?.orders || {})[a], paletteMap);
+                        const points = [];
+                        for (let t=0; t<isecPerHour; t++) {
+                            const v = timetable[t]?.[a]?.meet ? 1 : 0;
+                            const sec = t / res;
+                            const x = margin.l + Math.min(innerW, Math.max(0, sec*band));
+                            const y = h - margin.b - (v / maxY) * (h - margin.t - margin.b);
+                            points.push(`${x},${y}`);
+                        }
+                    return points.length ? `<polyline fill="none" stroke="${color}" stroke-width="1" stroke-opacity="0.35" points="${points.join(' ')}"/>` : '';
+                    }).join('');
+                }).join('');
 
                 const ticks = [];
                 const tickEvery = 600;
@@ -1397,7 +1529,7 @@ function renderChart({
                     ticks.push(`<text x="${x}" y="${h-margin.b+14}" font-size="11" fill="#7b8ba3" text-anchor="middle">${s/60}p</text>`);
                 }
                 const yTicks = [];
-                const yStep = Math.max(1, Math.floor(maxY/4));
+                const yStep = 1;
                 for (let yv=0; yv<=maxY; yv+=yStep) {
                     const y = h - margin.b - (yv / maxY) * (h - margin.t - margin.b);
                     yTicks.push(`<line x1="${margin.l-4}" y1="${y}" x2="${margin.l}" y2="${y}" stroke="#2c3a4c" stroke-width="1"/>`);
@@ -1410,19 +1542,19 @@ function renderChart({
                         ${ticks.join('')}
                         <line x1="${margin.l}" y1="${h-margin.b}" x2="${w-margin.r}" y2="${h-margin.b}" stroke="#1f2a38" stroke-width="1"/>
                         ${yTicks.join('')}
-                        ${points ? `<polyline fill="none" stroke="#e74c3c" stroke-width="2" points="${points}"/>` : ''}
+                        ${polylines}
                         <text x="${margin.l}" y="${margin.t}" font-size="12" fill="#7b8ba3">Találkozások (db)</text>
                     </svg>
                 `;
             }
 
-            function renderChartQueues(sim, palette, isecPerHour) {
+            function renderChartQueues(sims, palette, isecPerHour) {
                 if (!chartBox3) return;
-                if (!sim) {
+                if (!sims || (Array.isArray(sims) && sims.length === 0)) {
                     chartBox3.textContent = 'Nincs adat a diagramhoz.';
                     return;
                 }
-                const { timetable } = sim;
+                const simList = Array.isArray(sims) ? sims : [sims];
                 const w = 1000, h = 200;
                 const margin = { l: 55, r: 10, t: 20, b: 28 };
                 const innerW = w - margin.l - margin.r;
@@ -1433,21 +1565,27 @@ function renderChart({
 
                 // max queue for scaling
                 let maxQ = 1;
-                for (let t=0; t<isecPerHour; t++) {
-                    arms.forEach(a => { if (timetable[t][a]?.queue > maxQ) maxQ = timetable[t][a].queue; });
-                }
-
-                const paths = arms.map(a => {
-                    const color = orderToColor((lastData?.orders||{})[a], paletteMap);
-                    const pts = [];
+                simList.forEach(sim => {
+                    const timetable = sim.timetable || [];
                     for (let t=0; t<isecPerHour; t++) {
-                        const q = timetable[t][a]?.queue || 0;
-                        const sec = t / res;
-                        const x = margin.l + Math.min(innerW, Math.max(0, sec*band));
-                        const y = h - margin.b - (q / maxQ) * (h - margin.t - margin.b);
-                        pts.push(`${x},${y}`);
+                        arms.forEach(a => { if (timetable[t]?.[a]?.queue > maxQ) maxQ = timetable[t][a].queue; });
                     }
-                    return `<polyline fill="none" stroke="${color}" stroke-width="2" points="${pts.join(' ')}"/>`;
+                });
+
+                const paths = simList.map(sim => {
+                    const timetable = sim.timetable || [];
+                    return arms.map(a => {
+                        const color = orderToColor((lastData?.orders||{})[a], paletteMap);
+                        const pts = [];
+                        for (let t=0; t<isecPerHour; t++) {
+                            const q = timetable[t]?.[a]?.queue || 0;
+                            const sec = t / res;
+                            const x = margin.l + Math.min(innerW, Math.max(0, sec*band));
+                            const y = h - margin.b - (q / maxQ) * (h - margin.t - margin.b);
+                            pts.push(`${x},${y}`);
+                        }
+                    return `<polyline fill="none" stroke="${color}" stroke-width="1" stroke-opacity="0.35" points="${pts.join(' ')}"/>`;
+                    }).join('');
                 }).join('');
 
                 const ticks = [];
@@ -1535,7 +1673,7 @@ function renderChart({
                         ${ticks.join('')}
                         <line x1="${margin.l}" y1="${h-margin.b}" x2="${w-margin.r}" y2="${h-margin.b}" stroke="#1f2a38" stroke-width="1"/>
                         ${yTicks.join('')}
-                        ${paths.map(p=>`<polyline fill="none" stroke="${p.color}" stroke-width="2" points="${p.coords}"/>`).join('')}
+                        ${paths.map(p=>`<polyline fill="none" stroke="${p.color}" stroke-width="1" points="${p.coords}"/>`).join('')}
                         ${legend}
                         <text x="${margin.l}" y="${margin.t}" font-size="12" fill="#7b8ba3">Átlagos sorhossz sec-enként</text>
                     </svg>
@@ -1583,7 +1721,7 @@ function renderChart({
                         const y = margin.t + innerH - (val/maxVal)*innerH;
                         pts.push(`${x},${y}`);
                     }
-                    return `<polyline fill="none" stroke="${color}" stroke-width="2" points="${pts.join(' ')}"/>`;
+                    return `<polyline fill="none" stroke="${color}" stroke-width="1" points="${pts.join(' ')}"/>`;
                 }).join('');
 
                 const yTicks = [];
