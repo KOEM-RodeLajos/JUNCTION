@@ -103,6 +103,7 @@
             position: absolute;
             border: none;
             z-index: 4;
+            box-sizing: border-box;
         }
         .axis-hitbox.ac {
             left: 35%;
@@ -123,6 +124,49 @@
             height: 30%;
             z-index: 6;
         }
+        .axis-hitbox.corner {
+            border: none;
+            z-index: 5;
+        }
+        .axis-hitbox.ab { left: 65%; top: 0; width: 35%; height: 35%; }
+        .axis-hitbox.bc { left: 65%; top: 65%; width: 35%; height: 35%; }
+        .axis-hitbox.cd { left: 0; top: 65%; width: 35%; height: 35%; }
+        .axis-hitbox.ad { left: 0; top: 0; width: 35%; height: 35%; }
+
+        .axis-corner-indicator {
+            position: absolute;
+            width: 36px;
+            height: 36px;
+            border: none;
+            background: transparent;
+            color: #8da6d6;
+            font-size: 28px;
+            font-weight: bold;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 7;
+            pointer-events: none;
+        }
+        .axis-corner-indicator.on {
+            display: flex;
+            color: #6c8ecf;
+        }
+        .axis-corner-indicator::before {
+            content: '↔';
+            display: block;
+            line-height: 1;
+            transform-origin: center;
+        }
+        .axis-corner-indicator.ab::before { transform: rotate(45deg); }
+        .axis-corner-indicator.bc::before { transform: rotate(135deg); }
+        .axis-corner-indicator.cd::before { transform: rotate(45deg); }
+        .axis-corner-indicator.ad::before { transform: rotate(135deg); }
+        /* A 35% x 35% sarok-hitboxok közepére igazítva */
+        .axis-corner-indicator.ab { left: 84%; top: 16%; transform: translate(-50%, -50%); }
+        .axis-corner-indicator.bc { left: 84%; top: 84%; transform: translate(-50%, -50%); }
+        .axis-corner-indicator.cd { left: 19%; top: 81%; transform: translate(-50%, -50%); }
+        .axis-corner-indicator.ad { left: 19%; top: 19%; transform: translate(-50%, -50%); }
 
         /* ---------------- INPUT MEZŐK ---------------- */
         
@@ -488,6 +532,14 @@
             <div class="axis-hitbox ac" title="AC tengely"></div>
             <div class="axis-hitbox bd" title="BD tengely"></div>
             <div class="axis-hitbox both" title="AC + BD tengely"></div>
+            <div class="axis-hitbox corner ab" title="AB tengely"></div>
+            <div class="axis-hitbox corner bc" title="BC tengely"></div>
+            <div class="axis-hitbox corner cd" title="CD tengely"></div>
+            <div class="axis-hitbox corner ad" title="AD tengely"></div>
+            <div class="axis-corner-indicator ab" title="AB"></div>
+            <div class="axis-corner-indicator bc" title="BC"></div>
+            <div class="axis-corner-indicator cd" title="CD"></div>
+            <div class="axis-corner-indicator ad" title="AD"></div>
         </div>
 
         <div class="cell right">
@@ -550,12 +602,27 @@
         const hitboxAC = document.querySelector('.axis-hitbox.ac');
         const hitboxBD = document.querySelector('.axis-hitbox.bd');
         const hitboxBoth = document.querySelector('.axis-hitbox.both');
+        const hitboxAB = document.querySelector('.axis-hitbox.ab');
+        const hitboxBC = document.querySelector('.axis-hitbox.bc');
+        const hitboxCD = document.querySelector('.axis-hitbox.cd');
+        const hitboxAD = document.querySelector('.axis-hitbox.ad');
+        const indicatorAB = document.querySelector('.axis-corner-indicator.ab');
+        const indicatorBC = document.querySelector('.axis-corner-indicator.bc');
+        const indicatorCD = document.querySelector('.axis-corner-indicator.cd');
+        const indicatorAD = document.querySelector('.axis-corner-indicator.ad');
         const horizontalArrows = document.querySelectorAll('.arrow-horizontal');
         const verticalArrows = document.querySelectorAll('.arrow-vertical');
+        const cornerAxes = { AB: false, BC: false, CD: false, AD: false };
 
         function refreshArrows(orderState = latestOrder) {
             const acAxis = toggleVertical.checked && (orderState?.A ?? 0) !== 0 && (orderState?.C ?? 0) !== 0;
             const bdAxis = toggleHorizontal.checked && (orderState?.B ?? 0) !== 0 && (orderState?.D ?? 0) !== 0;
+            const cornerActive = {
+                AB: (orderState?.A ?? 0) !== 0 && (orderState?.B ?? 0) !== 0,
+                BC: (orderState?.B ?? 0) !== 0 && (orderState?.C ?? 0) !== 0,
+                CD: (orderState?.C ?? 0) !== 0 && (orderState?.D ?? 0) !== 0,
+                AD: (orderState?.A ?? 0) !== 0 && (orderState?.D ?? 0) !== 0,
+            };
 
             horizontalArrows.forEach(el => {
                 el.style.display = bdAxis ? 'inline' : 'none';
@@ -563,6 +630,10 @@
             verticalArrows.forEach(el => {
                 el.style.display = acAxis ? 'inline' : 'none';
             });
+            if (indicatorAB) indicatorAB.classList.toggle('on', !!cornerAxes.AB && cornerActive.AB);
+            if (indicatorBC) indicatorBC.classList.toggle('on', !!cornerAxes.BC && cornerActive.BC);
+            if (indicatorCD) indicatorCD.classList.toggle('on', !!cornerAxes.CD && cornerActive.CD);
+            if (indicatorAD) indicatorAD.classList.toggle('on', !!cornerAxes.AD && cornerActive.AD);
         }
 
         if (hitboxAC) {
@@ -581,6 +652,34 @@
             hitboxBoth.addEventListener('click', (e) => {
                 toggleVertical.checked = !toggleVertical.checked;
                 toggleHorizontal.checked = !toggleHorizontal.checked;
+                refreshArrows(latestOrder);
+                e.stopPropagation();
+            });
+        }
+        if (hitboxAB) {
+            hitboxAB.addEventListener('click', (e) => {
+                cornerAxes.AB = !cornerAxes.AB;
+                refreshArrows(latestOrder);
+                e.stopPropagation();
+            });
+        }
+        if (hitboxBC) {
+            hitboxBC.addEventListener('click', (e) => {
+                cornerAxes.BC = !cornerAxes.BC;
+                refreshArrows(latestOrder);
+                e.stopPropagation();
+            });
+        }
+        if (hitboxCD) {
+            hitboxCD.addEventListener('click', (e) => {
+                cornerAxes.CD = !cornerAxes.CD;
+                refreshArrows(latestOrder);
+                e.stopPropagation();
+            });
+        }
+        if (hitboxAD) {
+            hitboxAD.addEventListener('click', (e) => {
+                cornerAxes.AD = !cornerAxes.AD;
                 refreshArrows(latestOrder);
                 e.stopPropagation();
             });
@@ -890,6 +989,14 @@
                 BD_checked: !!toggleHorizontal.checked,
                 AC_active: !!(toggleVertical.checked && (latestOrder.A ?? 0) !== 0 && (latestOrder.C ?? 0) !== 0),
                 BD_active: !!(toggleHorizontal.checked && (latestOrder.B ?? 0) !== 0 && (latestOrder.D ?? 0) !== 0),
+                AB_checked: !!cornerAxes.AB,
+                BC_checked: !!cornerAxes.BC,
+                CD_checked: !!cornerAxes.CD,
+                AD_checked: !!cornerAxes.AD,
+                AB_active: !!(cornerAxes.AB && (latestOrder.A ?? 0) !== 0 && (latestOrder.B ?? 0) !== 0),
+                BC_active: !!(cornerAxes.BC && (latestOrder.B ?? 0) !== 0 && (latestOrder.C ?? 0) !== 0),
+                CD_active: !!(cornerAxes.CD && (latestOrder.C ?? 0) !== 0 && (latestOrder.D ?? 0) !== 0),
+                AD_active: !!(cornerAxes.AD && (latestOrder.A ?? 0) !== 0 && (latestOrder.D ?? 0) !== 0),
             };
 
             return {

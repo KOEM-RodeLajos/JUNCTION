@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="hu">
 <head>
     <meta charset="UTF-8">
@@ -797,7 +797,7 @@ function renderChart({
                     const { timetable } = sim;
                     const meetPerArmThisCycle = {A:0,B:0,C:0,D:0};
                     const queueHitPerArmThisCycle = {A:0,B:0,C:0,D:0};
-                    for (let t=0; t<isecPerHour; t++) {
+                    for (let t=1; t<=isecPerHour; t++) {
                         arms.forEach(a=>{
                             queueSums[a] += timetable[t][a].queue || 0;
                             queueSamples[a].push(timetable[t][a].queue || 0);
@@ -814,7 +814,7 @@ function renderChart({
                         });
 
                         // sec-enkénti átlaghoz: összeg a sec-ben
-                        const secIdx = Math.min(3599, Math.floor(t / res));
+                        const secIdx = Math.min(3599, Math.floor((t - 1) / res));
                         arms.forEach(a=>{
                             queueSumPerSec[a][secIdx] += timetable[t][a].queue || 0;
                             if (timetable[t][a].meet) meetSumPerSec[a][secIdx] += 1;
@@ -1291,23 +1291,19 @@ function renderChart({
                 const arms = ['A','B','C','D'];
                 const kSec = getFollowK();
                 const kIsec = kSec * res;
-
+                const barrierTimes = data.barrierTimes || {};
                 const perArmTimes = {};
                 const droppedByArm = { A:0, B:0, C:0, D:0 };
-
                 arms.forEach(arm => {
                     const ord = orders?.[arm] || 0;
                     const vehPerHour = vehicles?.[arm] || 0;
                     if (ord === 0 || !vehPerHour || vehPerHour <= 0) return;
-
                     const count = Math.max(0, Math.round(vehPerHour));
                     const raw = [];
                     for (let i = 0; i < count; i++) {
-                        // 1..isecPerHour
                         raw.push(1 + Math.floor(Math.random() * isecPerHour));
                     }
                     raw.sort((a,b)=>a-b);
-
                     const spaced = [];
                     raw.forEach(t => {
                         if (spaced.length === 0) {
@@ -1318,7 +1314,7 @@ function renderChart({
                                 spaced.push(t);
                             } else {
                                 const candidate = last + kIsec;
-                                if (candidate > isecPerHour - 1) {
+                                if (candidate > isecPerHour) {
                                     droppedByArm[arm] += 1;
                                 } else {
                                     spaced.push(candidate);
@@ -1326,52 +1322,83 @@ function renderChart({
                             }
                         }
                     });
-
                     perArmTimes[arm] = spaced;
                 });
-
-                // Timetable (sparse feltöltés, de tömbként)
                 const blankArm = () => ({ arrivals:0, meet:false, queueHit:false, queue:0, inCross:false });
-                const timetable = Array.from({ length: isecPerHour }, () => ({
+                const timetable = Array.from({ length: isecPerHour + 1 }, () => ({
                     A: blankArm(), B: blankArm(), C: blankArm(), D: blankArm()
                 }));
-
-                // érkezések bejelölése (arrive)
                 Object.entries(perArmTimes).forEach(([arm, times]) => {
                     times?.forEach(t => {
-                        const idx = Math.min(isecPerHour - 1, Math.max(0, Math.round(t)));
+                        const idx = Math.min(isecPerHour, Math.max(1, Math.round(t)));
                         timetable[idx][arm].arrivals = (timetable[idx][arm].arrivals || 0) + 1;
                     });
                 });
-
-                // fő isec ciklus
-                for (let t = 0; t < isecPerHour; t++) {
+                const barrierReadyAt = { A:null, B:null, C:null, D:null };
+                const barrierHead = { A:false, B:false, C:false, D:false };
+                const getBarrierIsec = (arm) => {
+                    const sec = Number(barrierTimes?.[arm]);
+                    if (!Number.isFinite(sec) || sec <= 0) return 0;
+                    return Math.max(0, Math.round(sec * res));
+                };
+                const barrierDurByArm = {
+                    A: getBarrierIsec('A'),
+                    B: getBarrierIsec('B'),
+                    C: getBarrierIsec('C'),
+                    D: getBarrierIsec('D')
+                };
+                const hasBarrier = (arm) => (barrierDurByArm[arm] || 0) > 0;
+                const axes = data.axes || {};
+                const axisEnabled = (name) => {
+                    const flag = axes[`${name}_active`];
+                    if (typeof flag === 'boolean') return flag;
+                    const direct = axes[name];
+                    if (typeof direct === 'boolean') return direct;
+                    return false;
+                };
+                const enabledPairs = new Set();
+                ['AC','BD','AB','BC','CD','AD'].forEach(name => {
+                    if (axisEnabled(name)) enabledPairs.add(name);
+                });
+                const pairKey = (a, b) => {
+                    if (a === b) return '';
+                    return a < b ? `${a}${b}` : `${b}${a}`;
+                };
+                const isCompatible = (a, b) => {
+                    if (a === b) return true;
+                    return enabledPairs.has(pairKey(a, b));
+                };
+                for (let t = 1; t <= isecPerHour; t++) {
                     const current = timetable[t];
-                    const prev = t > 0 ? timetable[t-1] : null;
-
-                    // queue másolása előzőből
+                    const prev = t > 1 ? timetable[t-1] : null;
                     if (prev) {
                         arms.forEach(a => {
                             current[a].queue = prev[a].queue;
                         });
                     }
-
-                    // érkezések kezelése: sorra futás elsőbbség, különben meet
                     arms.forEach(a => {
                         if ((current[a].arrivals || 0) > 0) {
                             const arrivesNow = current[a].arrivals;
-                            current[a].queue += arrivesNow;
-
-                            // van-e idegen autó a kereszteződésben
-                            const opposite = {A:'C',B:'D',C:'A',D:'B'}[a];
-                            const axisActive = (a==='A'||a==='C') ? !!(data.axes?.AC_active) : !!(data.axes?.BD_active);
+                            const armHasBarrier = hasBarrier(a);
+                            const hadWaitBefore = (prev && (prev[a].queue > 0)) || (armHasBarrier && barrierHead[a]);
+                            if (armHasBarrier) {
+                                if (!barrierHead[a] && current[a].queue <= 0) {
+                                    barrierHead[a] = true;
+                                    const dur = barrierDurByArm[a];
+                                    barrierReadyAt[a] = t + Math.max(0, dur - 1);
+                                    if (arrivesNow > 1) {
+                                        current[a].queue += (arrivesNow - 1);
+                                    }
+                                } else {
+                                    current[a].queue += arrivesNow;
+                                }
+                            } else {
+                                current[a].queue += arrivesNow;
+                            }
                             const othersIn = arms.some(b => {
-                                if (b === a) return false;
-                                if (axisActive && b === opposite) return false;
-                                return current[b].inCross;
+                                return b !== a && current[b].inCross && !isCompatible(a, b);
                             });
-                            // sorra futás prioritás: ha már volt sor, queueHit, különben meet
-                            if (prev && (prev[a].queue > 0)) {
+                            if (hadWaitBefore) {
                                 current[a].queueHit = true;
                                 current[a].meet = false;
                             } else if (othersIn) {
@@ -1383,48 +1410,51 @@ function renderChart({
                             }
                         }
                     });
-
-                    // sorrendi alciklus
                     const activeArms = arms.filter(a => (orders?.[a]||0) > 0 && (vehicles?.[a]||0) > 0);
                     activeArms.sort((a,b)=>{
                         const oa = orders[a]||0, ob = orders[b]||0;
                         if (oa !== ob) return oa - ob;
-                        return Math.random() - 0.5; // azonos order -> véletlen
+                        return Math.random() - 0.5;
                     });
-
                     activeArms.forEach(a => {
-                        if (current[a].queue <= 0) return;
-                        // mehet-e?
-                        const opposite = {A:'C',B:'D',C:'A',D:'B'}[a];
-                        const axisActive = (a==='A'||a==='C') ? !!(data.axes?.AC_active) : !!(data.axes?.BD_active);
-                        const anyIn = arms.some(b => current[b].inCross);
-                        const onlyOpposite = arms.every(b => {
-                            if (!current[b].inCross) return true;
-                            return axisActive && b === opposite;
+                        const armHasBarrier = hasBarrier(a);
+                        if (armHasBarrier) {
+                            if (!barrierHead[a]) return;
+                            if (barrierReadyAt[a] !== null && t < barrierReadyAt[a]) return;
+                        } else {
+                            if (current[a].queue <= 0) return;
+                        }
+                        // Saját karon bent lévő jármű mindig blokkol.
+                        if (current[a].inCross) return;
+                        const canGo = arms.every(b => {
+                            if (b === a || !current[b].inCross) return true;
+                            return isCompatible(a, b);
                         });
-                        const canGo = !anyIn || (axisActive && onlyOpposite);
                         if (!canGo) return;
-
-                        // kilép a sorból
-                        current[a].queue -= 1;
-
-                        // áthajtási idő isec-ben
+                        if (armHasBarrier) {
+                            barrierHead[a] = false;
+                            barrierReadyAt[a] = null;
+                            if (current[a].queue > 0) {
+                                current[a].queue -= 1;
+                                barrierHead[a] = true;
+                                barrierReadyAt[a] = t + barrierDurByArm[a];
+                            }
+                        } else {
+                            current[a].queue -= 1;
+                        }
                         const passSec = passTimes?.[a] || 0;
                         const dur = Math.round(passSec * res);
                         if (dur > 0) {
                             for (let dt = 0; dt < dur; dt++) {
                                 const idx = t + dt;
-                                if (idx >= isecPerHour) break;
+                                if (idx > isecPerHour) break;
                                 timetable[idx][a].inCross = true;
                             }
                         }
                     });
                 }
-
                 return { perArmTimes, timetable, droppedByArm };
-            }
-
-            function renderChartArrivals(sims, palette, isecPerHour) {
+            }function renderChartArrivals(sims, palette, isecPerHour) {
                 if (!chartBox1) return;
                 if (!sims || (Array.isArray(sims) && sims.length === 0)) {
                     chartBox1.textContent = 'Nincs adat a diagramhoz.';
@@ -1510,9 +1540,9 @@ function renderChart({
                     return arms.map(a => {
                         const color = orderToColor((lastData?.orders || {})[a], paletteMap);
                         const points = [];
-                        for (let t=0; t<isecPerHour; t++) {
+                        for (let t=1; t<=isecPerHour; t++) {
                             const v = timetable[t]?.[a]?.meet ? 1 : 0;
-                            const sec = t / res;
+                            const sec = (t - 1) / res;
                             const x = margin.l + Math.min(innerW, Math.max(0, sec*band));
                             const y = h - margin.b - (v / maxY) * (h - margin.t - margin.b);
                             points.push(`${x},${y}`);
@@ -1567,7 +1597,7 @@ function renderChart({
                 let maxQ = 1;
                 simList.forEach(sim => {
                     const timetable = sim.timetable || [];
-                    for (let t=0; t<isecPerHour; t++) {
+                    for (let t=1; t<=isecPerHour; t++) {
                         arms.forEach(a => { if (timetable[t]?.[a]?.queue > maxQ) maxQ = timetable[t][a].queue; });
                     }
                 });
@@ -1577,9 +1607,9 @@ function renderChart({
                     return arms.map(a => {
                         const color = orderToColor((lastData?.orders||{})[a], paletteMap);
                         const pts = [];
-                        for (let t=0; t<isecPerHour; t++) {
+                        for (let t=1; t<=isecPerHour; t++) {
                             const q = timetable[t]?.[a]?.queue || 0;
-                            const sec = t / res;
+                            const sec = (t - 1) / res;
                             const x = margin.l + Math.min(innerW, Math.max(0, sec*band));
                             const y = h - margin.b - (q / maxQ) * (h - margin.t - margin.b);
                             pts.push(`${x},${y}`);
@@ -1757,3 +1787,5 @@ function renderChart({
     </script>
 </body>
 </html>
+
+
