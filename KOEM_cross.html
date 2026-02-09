@@ -202,6 +202,11 @@
             width: 40px;
             border: 0.5px solid #777;
         }
+        .data-group input[type="time.number"] {
+            width: 20px;
+            display: inline-block;
+            transform: none;
+        }
 
         .label {
             font-size: 6px;
@@ -431,6 +436,119 @@
         .corner.br .barrier-field { left: 16px; top: 6px; }
         .corner.bl .barrier-field { right: 16px; top: 6px; }
 
+        /* Paraméterek (bal felső sarok) */
+        .param-stack {
+            position: absolute;
+            left: 6px;
+            top: 6px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            z-index: 3;
+        }
+        .param-row {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 7px;
+            color: #000;
+        }
+        .param-icon {
+            width: 14px;
+            height: 14px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .param-icon img {
+            width: 14px;
+            height: 14px;
+            display: block;
+        }
+        .param-icon svg {
+            width: 14px;
+            height: 14px;
+            fill: #4a4a4a;
+        }
+        .param-input {
+            width: 20px;
+            min-width: 20px;
+            max-width: 20px;
+            font-size: 20px;
+            text-align: center;
+            padding: 0;
+            border: none !important;
+            outline: none;
+            box-shadow: none;
+            background: transparent;
+            box-sizing: border-box;
+            -moz-appearance: textfield;
+        }
+        .param-input::-webkit-outer-spin-button,
+        .param-input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        .param-colon {
+            font-size: 7px;
+            color: #000;
+            line-height: 1;
+        }
+        .param-unit {
+            font-size: 7px;
+            color: #000;
+        }
+
+        /* Sebesség tábla (jobb felső sarok) */
+        .speed-sign {
+            position: absolute;
+            right: 6px;
+            top: 6px;
+            width: 34px;
+            height: 34px;
+            border: 7px solid #e10600;
+            border-radius: 50%;
+            background: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 3;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+        }
+        .speed-sign::after {
+            content: "";
+            position: absolute;
+            left: -8.2px;
+            top: -8.2px;
+            width: calc(100% + 16px);
+            height: calc(100% + 16px);
+            border: .25px solid #111;
+            border-radius: 50%;
+            pointer-events: none;
+        }
+        .speed-sign input {
+            width: 32px;
+            height: 28px;
+            line-height: 28px;
+            font-size: 24px;
+            font-weight: 600;
+            text-align: center;
+            border: none;
+            background: transparent;
+            outline: none;
+            color: #000;
+            font-family: Arial, sans-serif;
+            padding: 0;
+        }
+        .speed-sign input::-webkit-outer-spin-button,
+        .speed-sign input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        .speed-sign input[type=number] {
+            -moz-appearance: textfield;
+        }
+
         /* ---------------- INAKTÍV (order 0) ÁG STÍLUS ---------------- */
         .cell.inactive {
             background: white !important;
@@ -461,12 +579,41 @@
 
     <div class="container">
         <div class="cell corner tl">
+            <div class="param-stack">
+                <div class="param-row">
+                    <span class="param-icon" aria-hidden="true">
+                        <img src="car.png" alt="">
+                    </span>
+                    <span class="param-colon">:</span>
+                    <input id="param-car-length" class="param-input" type="number" step="0.1">
+                    <span class="param-unit">m</span>
+                </div>
+                <div class="param-row">
+                    <span class="param-icon" aria-hidden="true">
+                        <img src="driver.png" alt="">
+                    </span>
+                    <span class="param-colon">:</span>
+                    <input id="param-driver-time" class="param-input" type="number" step="0.1">
+                    <span class="param-unit">s</span>
+                </div>
+                <div class="param-row">
+                    <span class="param-icon" aria-hidden="true">
+                        <img src="accel.png" alt="">
+                    </span>
+                    <span class="param-colon">:</span>
+                    <input id="param-accel" class="param-input" type="number" step="0.1">
+                    <span class="param-unit">m/s<sup>2</sup></span>
+                </div>
+            </div>
             <div class="barrier-field">
                 <input class="barrier-input barrier-input-A" type="time.number">
                 <span class="barrier-unit">s</span>
             </div>
         </div>
         <div class="cell corner tr">
+            <div class="speed-sign">
+                <input id="param-vmax" type="number" step="1">
+            </div>
             <div class="barrier-field">
                 <input class="barrier-input barrier-input-B" type="time.number">
                 <span class="barrier-unit">s</span>
@@ -492,7 +639,7 @@
             </div>
             <div class="data-group">
                 <input type="time.number">
-                <div class="label">s/áthajtás</div>
+                <div class="label">m</div>
             </div>
         </div>
 
@@ -515,7 +662,7 @@
             </div>
             <div class="data-group">
                 <input type="time.number">
-                <div class="label">s/áthajtás</div>
+                <div class="label">m</div>
             </div>
         </div>
 
@@ -557,7 +704,7 @@
             </div>
             <div class="data-group">
                 <input type="time.number">
-                <div class="label">s/áthajtás</div>
+                <div class="label">m</div>
             </div>
         </div>
 
@@ -576,7 +723,7 @@
             </div>
             <div class="data-group">
                 <input type="time.number">
-                <div class="label">s/áthajtás</div>
+                <div class="label">m</div>
             </div>
         </div>
 
@@ -743,13 +890,21 @@
             D: document.querySelector('.cell.left input[type="time.number"]'),
         };
 
+        const extraInputs = {
+            carLength: document.getElementById('param-car-length'),
+            driverTime: document.getElementById('param-driver-time'),
+            accel: document.getElementById('param-accel'),
+            vmax: document.getElementById('param-vmax'),
+        };
+
         const DEFAULTS = {
             priority: { A: 1, B: 2, C: 3, D: 0 },
             vehicles: { A: 0, B: 200, C: 300, D: 0 },
-            passTime: { A: '4,2', B: '4,2', C: '4,2', D: '4,2' },
+            passTime: { A: '6,0', B: '6,0', C: '6,0', D: '6,0' },
             barrierTime: { A: '6', B: '6', C: '6', D: '6' },
             axes: { AC: true, BD: true },
-            barrierEnabled: { A: false, B: false, C: false, D: false }
+            barrierEnabled: { A: false, B: false, C: false, D: false },
+            extra: { carLength: '4.8', driverTime: '0.8', accel: '2.0', vmax: '10' }
         };
 
         const barrierState = { A: true, B: true, C: true, D: true };
@@ -787,6 +942,10 @@
                 if (barrierTimeInputs[arm]) barrierTimeInputs[arm].value = DEFAULTS.barrierTime[arm];
                 setBarrierState(arm, DEFAULTS.barrierEnabled[arm]);
             });
+            if (extraInputs.carLength) extraInputs.carLength.value = DEFAULTS.extra.carLength;
+            if (extraInputs.driverTime) extraInputs.driverTime.value = DEFAULTS.extra.driverTime;
+            if (extraInputs.accel) extraInputs.accel.value = DEFAULTS.extra.accel;
+            if (extraInputs.vmax) extraInputs.vmax.value = DEFAULTS.extra.vmax;
             if (toggleVertical) toggleVertical.checked = !!DEFAULTS.axes.AC;
             if (toggleHorizontal) toggleHorizontal.checked = !!DEFAULTS.axes.BD;
         }
@@ -976,6 +1135,12 @@
                 C: parseNumber(passInputs.C?.value),
                 D: parseNumber(passInputs.D?.value),
             };
+            const extra = {
+                carLength: parseNumber(extraInputs.carLength?.value),
+                driverTime: parseNumber(extraInputs.driverTime?.value),
+                accel: parseNumber(extraInputs.accel?.value),
+                vmax: parseNumber(extraInputs.vmax?.value),
+            };
             const barrierTimes = {
                 A: barrierState.A ? (parseNumber(barrierTimeInputs.A?.value) ?? 0) : 0,
                 B: barrierState.B ? (parseNumber(barrierTimeInputs.B?.value) ?? 0) : 0,
@@ -1004,6 +1169,7 @@
                 orders: { ...latestOrder },
                 vehicles,
                 passTimes,
+                extra,
                 barrierTimes,
                 barriers,
                 axes,
@@ -1023,6 +1189,3 @@
 
 </body>
 </html>
-
-
-

@@ -322,6 +322,11 @@
             padding: 6px 8px;
             text-align: left;
         }
+        .result-table th:not(:first-child),
+        .result-table td:not(:first-child) {
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+        }
 
         .result-table th {
             background: #1a3968;
@@ -370,7 +375,7 @@
                 <div class="controls">
                     <div class="control-row primary">
                         <label for="follow-time">Követési idők:</label>
-                        <input id="follow-time" type="number" min="0" step="0.1" placeholder="" value="2">
+                        <input id="follow-time" type="number" min="0" step="0.1" placeholder="" value="3">
                         <span class="unit">sec</span>
                     </div>
                     <hr class="thin-sep">
@@ -533,6 +538,46 @@
                 const n = parseFloat(String(v).replace(',', '.'));
                 return Number.isNaN(n) ? null : n;
             };
+
+            function computePassTimesFromLengths(data) {
+                if (!data) return data?.passTimes || {};
+                const extra = data.extra || {};
+                const vmaxKmh = parseNum(extra.vmax);
+                const carLen = parseNum(extra.carLength);
+                if (!vmaxKmh || vmaxKmh <= 0 || carLen === null) return data.passTimes || {};
+                const speed = vmaxKmh / 3.6; // m/s
+                if (speed <= 0) return data.passTimes || {};
+                const out = { free: {}, barrier: {}, yield: {} };
+                const accel = parseNum(extra.accel);
+                const a = accel && accel > 0 ? accel : null;
+                const reaction = parseNum(extra.driverTime);
+                const r = reaction && reaction > 0 ? reaction : 0;
+                ['A', 'B', 'C', 'D'].forEach(arm => {
+                    const L = parseNum(data.passTimes?.[arm]);
+                    if (L === null || L < 0) {
+                        out.free[arm] = 0;
+                        out.barrier[arm] = 0;
+                        out.yield[arm] = 0;
+                        return;
+                    }
+                    const dist = carLen + L;
+                    const base = dist / speed;
+                    out.free[arm] = base;
+                    let accelTime = base;
+                    if (a) {
+                        const sAcc = (speed * speed) / (2 * a);
+                        if (dist <= sAcc) {
+                            accelTime = Math.sqrt((2 * dist) / a);
+                        } else {
+                            const tAcc = speed / a;
+                            accelTime = tAcc + (dist - sAcc) / speed;
+                        }
+                    }
+                    out.barrier[arm] = accelTime;
+                    out.yield[arm] = accelTime + r;
+                });
+                return out;
+            }
 
             function getResolution() {
                 const val = parseNum(resolutionInput?.value);
@@ -742,7 +787,10 @@ function renderChart({
 
             async function renderResults(data) {
                 if (!meetTableCard || !queueHitTableCard) return;
-                const { priorities, orders, vehicles, passTimes, axes } = data || {};
+                const { priorities, orders, vehicles, axes } = data || {};
+                const passTimesByScenario = computePassTimesFromLengths(data);
+                const basePassTimes = passTimesByScenario?.free || data?.passTimes || {};
+                const simData = { ...(data || {}), passTimes: basePassTimes, passTimesByScenario };
                 const arms = ['A', 'B', 'C', 'D'];
 
                 const res = getResolution();
@@ -780,7 +828,7 @@ function renderChart({
                     `;
                 }
                 for (let c=0; c<cycles; c++) {
-                    const sim = simulateTraffic({ data, res, isecPerHour, palette });
+                    const sim = simulateTraffic({ data: simData, res, isecPerHour, palette });
                     if (c === cycles-1) lastSim = sim; // utolsó lefutás diagramokhoz
                     if (!sim) continue;
                     if (c % sampleEvery === 0) {
@@ -864,9 +912,14 @@ function renderChart({
                 const f0 = (v)=> v===Infinity ? '0' : String(Math.round(Number(v)));
                 const inactiveArms = new Set(arms.filter(a => (orders?.[a] || 0) === 0 || (vehicles?.[a] || 0) === 0));
                 const rowClassFor = (a) => inactiveArms.has(a) ? ' class="inactive-row"' : '';
+                const armLabelHtml = (a) => {
+                    if (inactiveArms.has(a)) return a;
+                    const color = orderToColor((orders || {})[a], palette);
+                    return `<span class="arm-label" style="color:${color};font-weight:700;">${a}</span>`;
+                };
                 const rowsSummary = arms.map(a => `
                     <tr${rowClassFor(a)}>
-                        <td>${a}</td>
+                        <td>${armLabelHtml(a)}</td>
                         <td>${f0(meetMin[a])}</td>
                         <td>${f1(meetAvg[a])}</td>
                         <td>${f0(meetP95[a])}</td>
@@ -909,7 +962,7 @@ function renderChart({
                     const avgQ = queueSums[a] / (isecPerHour * cycles);
                     return `
                         <tr${rowClassFor(a)}>
-                            <td>${a}</td>
+                            <td>${armLabelHtml(a)}</td>
                             <td>${f0(queueP50[a])}</td>
                             <td>${f1(avgQ)}</td>
                             <td>${f0(queueP95[a])}</td>
@@ -983,7 +1036,7 @@ function renderChart({
                 // Sorra futás táblázat (queueHit) -> Eredménytábla 1 alá
                 const rowsQueueHit = arms.map(a => `
                     <tr${rowClassFor(a)}>
-                        <td>${a}</td>
+                        <td>${armLabelHtml(a)}</td>
                         <td>${f0(queueHitMin[a]===Infinity?0:queueHitMin[a])}</td>
                         <td>${f1(queueHitAvg[a])}</td>
                         <td>${f0(queueHitP95[a])}</td>
@@ -1287,7 +1340,7 @@ function renderChart({
             // ---------------------- SZIMULÁCIÓ ------------------------
             function simulateTraffic({ data, res, isecPerHour, palette }) {
                 if (!data) return null;
-                const { priorities, orders, vehicles, passTimes } = data;
+                const { priorities, orders, vehicles, passTimes, passTimesByScenario } = data;
                 const arms = ['A','B','C','D'];
                 const kSec = getFollowK();
                 const kIsec = kSec * res;
@@ -1336,6 +1389,7 @@ function renderChart({
                 });
                 const barrierReadyAt = { A:null, B:null, C:null, D:null };
                 const barrierHead = { A:false, B:false, C:false, D:false };
+                const headWait = { A:{barrier:false, priority:false}, B:{barrier:false, priority:false}, C:{barrier:false, priority:false}, D:{barrier:false, priority:false} };
                 const getBarrierIsec = (arm) => {
                     const sec = Number(barrierTimes?.[arm]);
                     if (!Number.isFinite(sec) || sec <= 0) return 0;
@@ -1377,24 +1431,31 @@ function renderChart({
                         });
                     }
                     arms.forEach(a => {
-                        if ((current[a].arrivals || 0) > 0) {
-                            const arrivesNow = current[a].arrivals;
-                            const armHasBarrier = hasBarrier(a);
-                            const hadWaitBefore = (prev && (prev[a].queue > 0)) || (armHasBarrier && barrierHead[a]);
-                            if (armHasBarrier) {
-                                if (!barrierHead[a] && current[a].queue <= 0) {
-                                    barrierHead[a] = true;
-                                    const dur = barrierDurByArm[a];
-                                    barrierReadyAt[a] = t + Math.max(0, dur - 1);
-                                    if (arrivesNow > 1) {
-                                        current[a].queue += (arrivesNow - 1);
-                                    }
-                                } else {
-                                    current[a].queue += arrivesNow;
+                    if ((current[a].arrivals || 0) > 0) {
+                        const arrivesNow = current[a].arrivals;
+                        const armHasBarrier = hasBarrier(a);
+                        const hadWaitBefore = (prev && (prev[a].queue > 0)) || (armHasBarrier && barrierHead[a]);
+                        const queueBefore = current[a].queue;
+                        if (armHasBarrier) {
+                            if (!barrierHead[a] && current[a].queue <= 0) {
+                                barrierHead[a] = true;
+                                const dur = barrierDurByArm[a];
+                                barrierReadyAt[a] = t + Math.max(0, dur - 1);
+                                headWait[a].barrier = false;
+                                headWait[a].priority = false;
+                                if (arrivesNow > 1) {
+                                    current[a].queue += (arrivesNow - 1);
                                 }
                             } else {
                                 current[a].queue += arrivesNow;
                             }
+                        } else {
+                            current[a].queue += arrivesNow;
+                            if (queueBefore <= 0) {
+                                headWait[a].barrier = false;
+                                headWait[a].priority = false;
+                            }
+                        }
                             const othersIn = arms.some(b => {
                                 return b !== a && current[b].inCross && !isCompatible(a, b);
                             });
@@ -1420,7 +1481,10 @@ function renderChart({
                         const armHasBarrier = hasBarrier(a);
                         if (armHasBarrier) {
                             if (!barrierHead[a]) return;
-                            if (barrierReadyAt[a] !== null && t < barrierReadyAt[a]) return;
+                            if (barrierReadyAt[a] !== null && t < barrierReadyAt[a]) {
+                                headWait[a].barrier = true;
+                                return;
+                            }
                         } else {
                             if (current[a].queue <= 0) return;
                         }
@@ -1430,7 +1494,10 @@ function renderChart({
                             if (b === a || !current[b].inCross) return true;
                             return isCompatible(a, b);
                         });
-                        if (!canGo) return;
+                        if (!canGo) {
+                            headWait[a].priority = true;
+                            return;
+                        }
                         if (armHasBarrier) {
                             barrierHead[a] = false;
                             barrierReadyAt[a] = null;
@@ -1438,11 +1505,19 @@ function renderChart({
                                 current[a].queue -= 1;
                                 barrierHead[a] = true;
                                 barrierReadyAt[a] = t + barrierDurByArm[a];
+                                headWait[a].barrier = false;
+                                headWait[a].priority = false;
                             }
                         } else {
                             current[a].queue -= 1;
+                            if (current[a].queue > 0) {
+                                headWait[a].barrier = false;
+                                headWait[a].priority = false;
+                            }
                         }
-                        const passSec = passTimes?.[a] || 0;
+                        const scenario = headWait[a].priority ? 'yield' : (headWait[a].barrier ? 'barrier' : 'free');
+                        const scenarioTimes = passTimesByScenario || { free: passTimes, barrier: passTimes, yield: passTimes };
+                        const passSec = scenarioTimes?.[scenario]?.[a] || 0;
                         const dur = Math.round(passSec * res);
                         if (dur > 0) {
                             for (let dt = 0; dt < dur; dt++) {
